@@ -2,25 +2,34 @@ import { randomUUID } from "crypto";
 import { PutObjectCommand, S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-const BUCKET = process.env.RAILWAY_BUCKET_NAME;
-const ENDPOINT = process.env.RAILWAY_BUCKET_ENDPOINT || "https://storage.railway.app";
+// Railway: use BUCKET for the S3 API (globally unique name). RAILWAY_BUCKET_NAME is the display name only.
+const BUCKET = process.env.BUCKET ?? process.env.RAILWAY_BUCKET_NAME;
+const ENDPOINT = process.env.ENDPOINT ?? process.env.RAILWAY_BUCKET_ENDPOINT ?? "https://storage.railway.app";
+const REGION = process.env.REGION ?? "auto";
+// AWS SDK expects AWS_*; Railway provides ACCESS_KEY_ID / SECRET_ACCESS_KEY - support both
+const ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID;
+const SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY;
 
 if (!BUCKET) {
   // eslint-disable-next-line no-console
-  console.warn("[s3] RAILWAY_BUCKET_NAME is not set; Railway uploads will fail until configured.");
+  console.warn("[s3] BUCKET (or RAILWAY_BUCKET_NAME) is not set; Railway uploads will fail until configured.");
 }
 
-const s3Client = BUCKET
-  ? new S3Client({
-      endpoint: ENDPOINT,
-      region: "auto", // Railway uses "auto" region
-      // Credentials are picked up from env (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)
-    })
-  : null;
+const s3Client =
+  BUCKET && ACCESS_KEY && SECRET_KEY
+    ? new S3Client({
+        endpoint: ENDPOINT,
+        region: REGION,
+        credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
+        forcePathStyle: true, // required for some Railway buckets; use path-style URLs
+      })
+    : null;
 
 export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string> {
   if (!s3Client || !BUCKET) {
-    throw new Error("Railway Bucket is not configured (RAILWAY_BUCKET_NAME, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY).");
+    throw new Error(
+      "Railway Bucket is not configured. Set BUCKET (or RAILWAY_BUCKET_NAME), ACCESS_KEY_ID (or AWS_ACCESS_KEY_ID), and SECRET_ACCESS_KEY (or AWS_SECRET_ACCESS_KEY)."
+    );
   }
 
   const match = base64DataUrl.match(/^data:(.+);base64,(.*)$/);
@@ -50,7 +59,9 @@ export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string>
 
 export async function generatePresignedUrl(key: string): Promise<string> {
   if (!s3Client || !BUCKET) {
-    throw new Error("Railway Bucket is not configured.");
+    throw new Error(
+      "Railway Bucket is not configured. Set BUCKET, ACCESS_KEY_ID, and SECRET_ACCESS_KEY (or AWS_* equivalents)."
+    );
   }
 
   const command = new GetObjectCommand({

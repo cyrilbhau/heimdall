@@ -32,11 +32,13 @@ DATABASE_URL="postgresql://user:password@host:5432/dbname?schema=public"
 ADMIN_PASSWORD="set-a-strong-admin-password"
 ADMIN_SESSION_SECRET="set-a-long-random-session-secret"
 
-# Railway Buckets (get from Railway Bucket plugin)
-RAILWAY_BUCKET_NAME="your-bucket-name"
-RAILWAY_BUCKET_ENDPOINT="https://storage.railway.app"
-AWS_ACCESS_KEY_ID="your-railway-access-key"
-AWS_SECRET_ACCESS_KEY="your-railway-secret-key"
+# Railway Buckets (use Variable Reference from Bucket service Credentials tab)
+# Use BUCKET for the S3 API (globally unique name), not the display name.
+BUCKET="your-bucket-unique-name"
+ENDPOINT="https://storage.railway.app"
+REGION="auto"
+ACCESS_KEY_ID="from-railway-bucket-credentials"
+SECRET_ACCESS_KEY="from-railway-bucket-credentials"
 
 # CRM integration (noop for now)
 CRM_PROVIDER="NONE"
@@ -73,10 +75,10 @@ Open `http://localhost:3000/kiosk` for the kiosk and `http://localhost:3000/admi
    - `DATABASE_URL` – use the value provided by the Railway Postgres plugin.
    - `ADMIN_PASSWORD` – a strong shared admin password.
    - `ADMIN_SESSION_SECRET` – a long random string for signing admin session tokens.
-   - `RAILWAY_BUCKET_NAME` – use the value from Railway Bucket plugin.
-   - `RAILWAY_BUCKET_ENDPOINT` – `https://storage.railway.app`
-   - `AWS_ACCESS_KEY_ID` – use the value from Railway Bucket plugin.
-   - `AWS_SECRET_ACCESS_KEY` – use the value from Railway Bucket plugin.
+   - `BUCKET` – use the value from Railway Bucket **Credentials** tab (S3 API bucket name, e.g. `my-bucket-abc123`). Do not use the display name.
+   - `ENDPOINT` – `https://storage.railway.app` (or from Credentials).
+   - `REGION` – `auto` (or from Credentials).
+   - `ACCESS_KEY_ID` and `SECRET_ACCESS_KEY` – from Railway Bucket Credentials tab.
    - `CRM_PROVIDER` – keep as `NONE` for now.
 
 4. **Run migrations** on deploy:
