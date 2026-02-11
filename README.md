@@ -1,6 +1,6 @@
 ## Visitor kiosk webapp
 
-This is a minimalist visitor check-in kiosk inspired by office door entry flows. It is built with Next.js (App Router), Prisma, and Railway Postgres, with Railway Buckets for photo storage and a simple admin dashboard.
+This is a minimalist visitor check-in kiosk inspired by WeWork guest entry flows. It is built with Next.js (App Router), Prisma, and Railway Postgres, with Railway Buckets for photo storage and a simple admin dashboard.
 
 ### Key routes
 

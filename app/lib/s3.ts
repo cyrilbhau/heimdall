@@ -8,7 +8,9 @@ const ENDPOINT = process.env.ENDPOINT ?? process.env.RAILWAY_BUCKET_ENDPOINT ?? 
 const REGION_ENV = process.env.REGION ?? "auto";
 // AWS SDK signing requires a concrete region in the credential scope. Railway may set REGION=auto;
 // many S3-compatible backends then reject the signature. Use us-east-1 for signing when auto.
-const REGION = REGION_ENV === "auto" ? "ap-southeast-1" : REGION_ENV;
+const REGION = REGION_ENV === "auto" ? "us-east-1" : REGION_ENV;
+// Tigris (t3.storage*.dev) requires virtual-hosted style (forcePathStyle: false); Railway uses path-style.
+const IS_TIGRIS = /t3\.storage|tigris\.dev/i.test(ENDPOINT);
 // AWS SDK expects AWS_*; Railway provides ACCESS_KEY_ID / SECRET_ACCESS_KEY - support both
 const ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID;
 const SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY;
@@ -24,7 +26,7 @@ const s3Client =
         endpoint: ENDPOINT,
         region: REGION,
         credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
-        forcePathStyle: true, // required for some Railway buckets; use path-style URLs
+        forcePathStyle: !IS_TIGRIS, // Tigris requires false (virtual-hosted); Railway uses true (path-style)
       })
     : null;
 
