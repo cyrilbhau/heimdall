@@ -6,11 +6,11 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 const BUCKET = process.env.BUCKET ?? process.env.RAILWAY_BUCKET_NAME;
 const ENDPOINT = process.env.ENDPOINT ?? process.env.RAILWAY_BUCKET_ENDPOINT ?? "https://storage.railway.app";
 const REGION_ENV = process.env.REGION ?? "auto";
-// AWS SDK signing requires a concrete region in the credential scope. Railway may set REGION=auto;
-// many S3-compatible backends then reject the signature. Use us-east-1 for signing when auto.
-const REGION = REGION_ENV === "auto" ? "us-east-1" : REGION_ENV;
-// Tigris (t3.storage*.dev) requires virtual-hosted style (forcePathStyle: false); Railway uses path-style.
-const IS_TIGRIS = /t3\.storage|tigris\.dev/i.test(ENDPOINT);
+// Tigris (t3.storage*.dev, storageapi.dev) requires region "auto" and virtual-hosted style in the signed request.
+const IS_TIGRIS = /t3\.storage|tigris\.dev|storageapi\.dev/i.test(ENDPOINT);
+// Tigris: use literal "auto" per their docs. Others (e.g. Railway): use us-east-1 when env is "auto".
+const REGION = IS_TIGRIS ? "auto" : REGION_ENV === "auto" ? "us-east-1" : REGION_ENV;
+const FORCE_PATH_STYLE = !IS_TIGRIS;
 // AWS SDK expects AWS_*; Railway provides ACCESS_KEY_ID / SECRET_ACCESS_KEY - support both
 const ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID;
 const SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY;
@@ -26,7 +26,7 @@ const s3Client =
         endpoint: ENDPOINT,
         region: REGION,
         credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
-        forcePathStyle: !IS_TIGRIS, // Tigris requires false (virtual-hosted); Railway uses true (path-style)
+        forcePathStyle: FORCE_PATH_STYLE,
       })
     : null;
 
@@ -40,7 +40,7 @@ function agentLog(payload: Record<string, unknown>) {
 export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string> {
   // #region agent log
   const credentialSource = process.env.AWS_ACCESS_KEY_ID ? "AWS_*" : process.env.ACCESS_KEY_ID ? "ACCESS_*" : "none";
-  agentLog({ location: "s3.ts:uploadVisitorPhoto", message: "S3 config at upload", data: { endpoint: ENDPOINT, region: REGION, bucket: BUCKET ?? null, hasAccessKey: !!(process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID), hasSecretKey: !!(process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY), credentialSource, s3ClientExists: !!s3Client }, timestamp: Date.now(), hypothesisId: "H1-H2-H3" });
+  agentLog({ location: "s3.ts:uploadVisitorPhoto", message: "S3 config at upload", data: { endpoint: ENDPOINT, region: REGION, regionEnv: REGION_ENV, forcePathStyle: FORCE_PATH_STYLE, isTigris: IS_TIGRIS, bucket: BUCKET ?? null, hasAccessKey: !!(process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID), hasSecretKey: !!(process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY), credentialSource, s3ClientExists: !!s3Client }, timestamp: Date.now(), hypothesisId: "H1-H2-H3" });
   // #endregion
   if (!s3Client || !BUCKET) {
     throw new Error(

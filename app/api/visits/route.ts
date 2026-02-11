@@ -59,9 +59,7 @@ export async function POST(request: Request) {
         // #region agent log
         const err = error instanceof Error ? error : new Error(String(error));
         const errAny = error as { Code?: string; $metadata?: unknown };
-        const payload = { location: "route.ts:photo-catch", message: "Photo upload error", data: { errorMessage: err.message, errorName: err.name, code: errAny?.Code ?? null, isSignatureError: /signature|SignatureDoesNotMatch/i.test(err.message) }, timestamp: Date.now(), hypothesisId: "H1-H5" };
-        console.log(JSON.stringify({ ...payload, agentDebug: true }));
-        fetch("http://127.0.0.1:7242/ingest/588326a3-ad7a-4578-840d-daa057b61aed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) }).catch(() => {});
+        fetch("http://127.0.0.1:7242/ingest/588326a3-ad7a-4578-840d-daa057b61aed", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location: "route.ts:photo-catch", message: "Photo upload error", data: { errorMessage: err.message, errorName: err.name, code: errAny?.Code ?? null, isSignatureError: /signature|SignatureDoesNotMatch/i.test(err.message) }, timestamp: Date.now(), hypothesisId: "H1-H5" }) }).catch(() => {});
         // #endregion
         logEvent('error', 'Photo upload failed', { error: error instanceof Error ? error.message : 'Unknown error' });
         // Continue without photo - don't block the visitor experience
