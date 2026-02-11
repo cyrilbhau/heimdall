@@ -25,7 +25,18 @@ const s3Client =
       })
     : null;
 
+function agentLog(payload: Record<string, unknown>) {
+  const line = JSON.stringify({ ...payload, agentDebug: true });
+  // eslint-disable-next-line no-console
+  console.log(line);
+  fetch("http://127.0.0.1:7242/ingest/588326a3-ad7a-4578-840d-daa057b61aed", { method: "POST", headers: { "Content-Type": "application/json" }, body: line }).catch(() => {});
+}
+
 export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string> {
+  // #region agent log
+  const credentialSource = process.env.AWS_ACCESS_KEY_ID ? "AWS_*" : process.env.ACCESS_KEY_ID ? "ACCESS_*" : "none";
+  agentLog({ location: "s3.ts:uploadVisitorPhoto", message: "S3 config at upload", data: { endpoint: ENDPOINT, region: REGION, bucket: BUCKET ?? null, hasAccessKey: !!(process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID), hasSecretKey: !!(process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY), credentialSource, s3ClientExists: !!s3Client }, timestamp: Date.now(), hypothesisId: "H1-H2-H3" });
+  // #endregion
   if (!s3Client || !BUCKET) {
     throw new Error(
       "Railway Bucket is not configured. Set BUCKET (or RAILWAY_BUCKET_NAME), ACCESS_KEY_ID (or AWS_ACCESS_KEY_ID), and SECRET_ACCESS_KEY (or AWS_SECRET_ACCESS_KEY)."
@@ -44,6 +55,9 @@ export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string>
 
   const key = `visits/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.jpg`;
 
+  // #region agent log
+  agentLog({ location: "s3.ts:PutObject", message: "Before PutObject", data: { key, contentType: mimeType, bodyLength: buffer.length }, timestamp: Date.now(), hypothesisId: "H3-H4" });
+  // #endregion
   await s3Client.send(
     new PutObjectCommand({
       Bucket: BUCKET,
