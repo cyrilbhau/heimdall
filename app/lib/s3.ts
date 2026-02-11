@@ -5,7 +5,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 // Railway: use BUCKET for the S3 API (globally unique name). RAILWAY_BUCKET_NAME is the display name only.
 const BUCKET = process.env.BUCKET ?? process.env.RAILWAY_BUCKET_NAME;
 const ENDPOINT = process.env.ENDPOINT ?? process.env.RAILWAY_BUCKET_ENDPOINT ?? "https://storage.railway.app";
-const REGION = process.env.REGION ?? "auto";
+const REGION_ENV = process.env.REGION ?? "auto";
+// AWS SDK signing requires a concrete region in the credential scope. Railway may set REGION=auto;
+// many S3-compatible backends then reject the signature. Use us-east-1 for signing when auto.
+const REGION = REGION_ENV === "auto" ? "ap-southeast-1" : REGION_ENV;
 // AWS SDK expects AWS_*; Railway provides ACCESS_KEY_ID / SECRET_ACCESS_KEY - support both
 const ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID;
 const SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY;
