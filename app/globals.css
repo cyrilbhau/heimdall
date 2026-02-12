@@ -1,26 +1,375 @@
 @import "tailwindcss";
 
+/* ────────────────────────────────────────────
+   Design tokens — edit the :root values to change the palette.
+   Light mode is the default; dark mode activates via the
+   html.dark class (toggled by ThemeToggle component,
+   defaults to system preference).
+   ──────────────────────────────────────────── */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Base / backgrounds */
+  --c-base: #f8fafc;
+  --c-base-dark: #f1f5f9;
+
+  /* Primary (blue) */
+  --c-primary: #0066ff;
+  --c-primary-hover: #0052cc;
+  --c-primary-light: #3b82f6;
+
+  /* Accent (orange) */
+  --c-accent: #f97316;
+  --c-accent-light: #fb923c;
+
+  /* Surfaces & borders */
+  --c-surface: rgba(255, 255, 255, 0.7);
+  --c-surface-hover: rgba(255, 255, 255, 0.9);
+  --c-edge: rgba(0, 0, 0, 0.08);
+  --c-edge-hover: rgba(0, 0, 0, 0.15);
+
+  /* Text */
+  --c-text: #0f172a;
+  --c-muted: #475569;
+  --c-subtle: #94a3b8;
+
+  /* Semantic */
+  --c-success: #16a34a;
+  --c-error: #dc2626;
+  --c-warning: #d97706;
+
+  /* Animated gradient blobs */
+  --c-blob-1: rgba(59, 130, 246, 0.12);   /* blue */
+  --c-blob-2: rgba(6, 182, 212, 0.09);    /* cyan */
+  --c-blob-3: rgba(249, 115, 22, 0.08);   /* orange */
+  --c-blob-4: rgba(139, 92, 246, 0.07);   /* purple */
+  --c-blob-5: rgba(236, 72, 153, 0.06);   /* pink */
+
+  /* Button glow */
+  --c-glow: rgba(0, 102, 255, 0.15);
+  --c-glow-hover: rgba(0, 102, 255, 0.25);
+
+  /* Input focus ring */
+  --c-focus-ring: rgba(0, 102, 255, 0.12);
+  --c-focus-glow: rgba(0, 102, 255, 0.06);
+
+  /* Gradient text */
+  --c-grad-from: #0052cc;
+  --c-grad-to: #ea580c;
+
+  /* Skeleton shimmer */
+  --c-shimmer-1: rgba(0, 0, 0, 0.04);
+  --c-shimmer-2: rgba(0, 0, 0, 0.08);
+
+  /* Scrollbar */
+  --c-scroll: rgba(0, 0, 0, 0.1);
+  --c-scroll-hover: rgba(0, 0, 0, 0.2);
 }
 
+html.dark {
+  --c-base: #0a1628;
+  --c-base-dark: #060f1e;
+
+  --c-primary: #3b82f6;
+  --c-primary-hover: #60a5fa;
+  --c-primary-light: #93c5fd;
+
+  --c-accent: #f97316;
+  --c-accent-light: #fb923c;
+
+  --c-surface: rgba(255, 255, 255, 0.05);
+  --c-surface-hover: rgba(255, 255, 255, 0.08);
+  --c-edge: rgba(255, 255, 255, 0.1);
+  --c-edge-hover: rgba(255, 255, 255, 0.18);
+
+  --c-text: #f1f5f9;
+  --c-muted: #94a3b8;
+  --c-subtle: #64748b;
+
+  --c-success: #22c55e;
+  --c-error: #ef4444;
+  --c-warning: #f59e0b;
+
+  --c-blob-1: rgba(59, 130, 246, 0.20);
+  --c-blob-2: rgba(6, 182, 212, 0.15);
+  --c-blob-3: rgba(249, 115, 22, 0.12);
+  --c-blob-4: rgba(139, 92, 246, 0.15);
+  --c-blob-5: rgba(236, 72, 153, 0.10);
+
+  --c-glow: rgba(59, 130, 246, 0.25);
+  --c-glow-hover: rgba(59, 130, 246, 0.35);
+
+  --c-focus-ring: rgba(59, 130, 246, 0.15);
+  --c-focus-glow: rgba(59, 130, 246, 0.08);
+
+  --c-grad-from: #93c5fd;
+  --c-grad-to: #fb923c;
+
+  --c-shimmer-1: rgba(255, 255, 255, 0.03);
+  --c-shimmer-2: rgba(255, 255, 255, 0.06);
+
+  --c-scroll: rgba(255, 255, 255, 0.08);
+  --c-scroll-hover: rgba(255, 255, 255, 0.15);
+}
+
+/* ────────────────────────────────────────────
+   Tailwind theme mapping
+   ──────────────────────────────────────────── */
+
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-base: var(--c-base);
+  --color-base-dark: var(--c-base-dark);
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-primary-light: var(--c-primary-light);
+  --color-accent: var(--c-accent);
+  --color-accent-light: var(--c-accent-light);
+  --color-surface: var(--c-surface);
+  --color-surface-hover: var(--c-surface-hover);
+  --color-edge: var(--c-edge);
+  --color-edge-hover: var(--c-edge-hover);
+  --color-text: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-subtle: var(--c-subtle);
+  --color-success: var(--c-success);
+  --color-error: var(--c-error);
+  --color-warning: var(--c-warning);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* ────────────────────────────────────────────
+   Base styles
+   ──────────────────────────────────────────── */
+
+body {
+  background: var(--c-base);
+  color: var(--c-text);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
+}
+
+/* ────────────────────────────────────────────
+   Animated gradient background (Stripe-inspired)
+   5 overlapping blobs with independent animations
+   create an organic, aurora-like color wash.
+   ──────────────────────────────────────────── */
+
+.stripe-gradient {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.stripe-gradient .blob {
+  position: absolute;
+  border-radius: 50%;
+  will-change: transform;
+}
+
+.stripe-gradient .blob-1 {
+  width: 55vmax;
+  height: 55vmax;
+  top: -20%;
+  right: -12%;
+  background: radial-gradient(circle at center, var(--c-blob-1), transparent 70%);
+}
+
+.stripe-gradient .blob-2 {
+  width: 50vmax;
+  height: 50vmax;
+  bottom: -18%;
+  left: -12%;
+  background: radial-gradient(circle at center, var(--c-blob-2), transparent 70%);
+}
+
+.stripe-gradient .blob-3 {
+  width: 42vmax;
+  height: 42vmax;
+  top: 35%;
+  right: -8%;
+  background: radial-gradient(circle at center, var(--c-blob-3), transparent 70%);
+}
+
+.stripe-gradient .blob-4 {
+  width: 60vmax;
+  height: 60vmax;
+  top: -28%;
+  left: -18%;
+  background: radial-gradient(circle at center, var(--c-blob-4), transparent 70%);
+}
+
+.stripe-gradient .blob-5 {
+  width: 36vmax;
+  height: 36vmax;
+  bottom: -8%;
+  left: 35%;
+  background: radial-gradient(circle at center, var(--c-blob-5), transparent 70%);
+}
+
+/* ────────────────────────────────────────────
+   Glass card
+   ──────────────────────────────────────────── */
+
+.glass-card {
+  background: var(--c-surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--c-edge);
+}
+
+/* ────────────────────────────────────────────
+   Gradient text
+   ──────────────────────────────────────────── */
+
+.gradient-text {
+  background: linear-gradient(135deg, var(--c-grad-from), var(--c-grad-to));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ────────────────────────────────────────────
+   Button glow
+   ──────────────────────────────────────────── */
+
+.btn-glow {
+  box-shadow:
+    0 0 20px var(--c-glow),
+    0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: box-shadow 0.3s ease;
+}
+
+.btn-glow:hover:not(:disabled) {
+  box-shadow:
+    0 0 30px var(--c-glow-hover),
+    0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.btn-glow:disabled {
+  box-shadow: none;
+}
+
+/* ────────────────────────────────────────────
+   Input focus glow
+   ──────────────────────────────────────────── */
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+input[type="search"]:focus,
+textarea:focus {
+  border-color: var(--c-primary) !important;
+  box-shadow:
+    0 0 0 3px var(--c-focus-ring),
+    0 0 20px var(--c-focus-glow);
+}
+
+/* ────────────────────────────────────────────
+   Shimmer skeleton
+   ──────────────────────────────────────────── */
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--c-shimmer-1) 25%,
+    var(--c-shimmer-2) 50%,
+    var(--c-shimmer-1) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+/* ────────────────────────────────────────────
+   CSS entrance animations (work without JS)
+   ──────────────────────────────────────────── */
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.5s ease-out both;
+}
+
+/* ────────────────────────────────────────────
+   Keyframes
+   ──────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+@keyframes glow-ring {
+  0%,
+  100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.05);
+  }
+}
+
+/* ────────────────────────────────────────────
+   Custom scrollbar
+   ──────────────────────────────────────────── */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--c-scroll);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--c-scroll-hover);
 }

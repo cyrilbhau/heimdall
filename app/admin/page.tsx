@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type VisitReason = {
   id: string;
@@ -9,6 +10,8 @@ type VisitReason = {
   active: boolean;
   sortOrder: number;
   source: "MANUAL" | "LUMA";
+  featured: boolean;
+  featuredAt: string | null;
 };
 
 type VisitSummary = {
@@ -43,6 +46,7 @@ export default function AdminPage() {
         setIsLoggingIn(false);
         return;
       }
+      setIsLoggingIn(false);
       setIsAuthed(true);
     } catch (error) {
       console.error("Login failed", error);
@@ -53,39 +57,50 @@ export default function AdminPage() {
 
   if (!isAuthed) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-zinc-900 text-zinc-50">
-        <main className="w-full max-w-sm rounded-3xl border border-zinc-800 bg-zinc-950 px-6 py-8 shadow-2xl">
+      <div className="flex min-h-screen items-center justify-center text-text">
+        <main className="glass-card w-full max-w-sm rounded-2xl px-6 py-8 animate-fade-in-up">
           <h1 className="mb-2 text-xl font-semibold tracking-tight">
             Admin dashboard
           </h1>
-          <p className="mb-6 text-xs text-zinc-400">
-            Enter the shared admin password to manage visit reasons and view recent visits.
+          <p className="mb-6 text-xs text-muted">
+            Enter the shared admin password to manage visit reasons and view
+            recent visits.
           </p>
-          <form
-            onSubmit={handleLogin}
-            className="space-y-4"
-          >
-            <label className="block text-xs font-medium text-zinc-300">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <label className="block text-xs font-medium text-muted">
               Password
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm text-zinc-50 outline-none ring-0 transition focus:border-zinc-400"
+                className="mt-2 w-full rounded-xl border border-edge bg-base-dark/60 px-3 py-2.5 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
               />
             </label>
-            {loginError && (
-              <p className="text-xs text-rose-400">
-                {loginError}
-              </p>
-            )}
-            <button
+            <AnimatePresence>
+              {loginError && (
+                <motion.p
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="text-xs text-error"
+                >
+                  {loginError}
+                </motion.p>
+              )}
+            </AnimatePresence>
+            <motion.button
               type="submit"
               disabled={!password || isLoggingIn}
-              className="w-full rounded-full bg-zinc-50 px-4 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+              whileHover={
+                password && !isLoggingIn ? { scale: 1.01 } : {}
+              }
+              whileTap={
+                password && !isLoggingIn ? { scale: 0.98 } : {}
+              }
+              className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
             >
-              {isLoggingIn ? "Signing in…" : "Sign in"}
-            </button>
+              {isLoggingIn ? "Signing in\u2026" : "Sign in"}
+            </motion.button>
           </form>
         </main>
       </div>
@@ -145,7 +160,9 @@ function AdminDashboard() {
         throw new Error("Failed to create reason");
       }
       const created = (await res.json()) as VisitReason;
-      setReasons((prev) => [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder));
+      setReasons((prev) =>
+        [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder)
+      );
       setNewLabel("");
     } catch (err) {
       console.error(err);
@@ -166,179 +183,280 @@ function AdminDashboard() {
         throw new Error("Failed to update reason");
       }
       const updated = (await res.json()) as VisitReason;
-      setReasons((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+      setReasons((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
     } catch (err) {
       console.error(err);
       setError("Unable to update reason. Please try again.");
     }
   }
 
+  async function toggleReasonFeatured(reason: VisitReason) {
+    const nowFeatured = isFeaturedActive(reason);
+    try {
+      const res = await fetch("/api/admin/visit-reasons", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reason.id, featured: !nowFeatured }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error ?? "Failed to update reason"
+        );
+      }
+      const updated = (await res.json()) as VisitReason;
+      setReasons((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        err instanceof Error ? err.message : "Unable to update reason."
+      );
+    }
+  }
+
   return (
-    <div className="flex min-h-screen items-start justify-center bg-zinc-900 text-zinc-50">
+    <div className="flex min-h-screen items-start justify-center text-text">
       <main className="flex w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-10">
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between animate-fade-in-up">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
-              Visitor dashboard
+              <span className="gradient-text">Visitor dashboard</span>
             </h1>
-            <p className="mt-1 text-xs text-zinc-400">
-              Manage reasons for visiting and keep an eye on who&apos;s been through the
-              door.
+            <p className="mt-1 text-xs text-muted">
+              Manage reasons for visiting and keep an eye on who&apos;s been
+              through the door.
             </p>
           </div>
         </header>
 
-        {error && (
-          <div className="rounded-2xl border border-rose-700/60 bg-rose-950/40 px-4 py-3 text-xs text-rose-100">
-            {error}
-          </div>
-        )}
+        <AnimatePresence>
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-xs text-error"
+            >
+              {error}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid gap-6 lg:grid-cols-2">
-          <section className="rounded-3xl border border-zinc-800 bg-zinc-950/80 px-4 py-5 sm:px-6">
+          {/* Visit reasons */}
+          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:100ms]">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-100">Visit reasons</h2>
-              <span className="text-xs text-zinc-500">
+              <h2 className="text-sm font-semibold text-text">
+                Visit reasons
+              </h2>
+              <span className="text-xs text-subtle">
                 {reasons.length} configured
               </span>
             </div>
 
-            <form
-              onSubmit={handleCreateReason}
-              className="mb-4 flex gap-2"
-            >
+            <form onSubmit={handleCreateReason} className="mb-4 flex gap-2">
               <input
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="Add a new reason…"
-                className="flex-1 rounded-2xl border border-zinc-700 bg-zinc-900 px-3 py-2 text-xs text-zinc-50 outline-none ring-0 transition focus:border-zinc-400"
+                placeholder="Add a new reason\u2026"
+                className="flex-1 rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200 placeholder:text-subtle"
               />
-              <button
+              <motion.button
                 type="submit"
                 disabled={!newLabel.trim() || isSavingReason}
-                className="rounded-full bg-zinc-50 px-4 py-2 text-xs font-medium text-zinc-900 shadow-sm shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+                whileHover={
+                  newLabel.trim() && !isSavingReason ? { scale: 1.03 } : {}
+                }
+                whileTap={
+                  newLabel.trim() && !isSavingReason ? { scale: 0.97 } : {}
+                }
+                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
               >
-                {isSavingReason ? "Saving…" : "Add"}
-              </button>
+                {isSavingReason ? "Saving\u2026" : "Add"}
+              </motion.button>
             </form>
 
-            <div className="max-h-72 space-y-1 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900/40 p-1 text-xs">
+            <div className="glass-card max-h-72 space-y-1 overflow-y-auto rounded-xl p-1 text-xs">
               {loading ? (
-                <div className="px-3 py-6 text-center text-zinc-500">
-                  Loading reasons…
+                <div className="space-y-2 p-2">
+                  {[...Array(4)].map((_, i) => (
+                    <div key={i} className="skeleton h-10 w-full" />
+                  ))}
                 </div>
               ) : reasons.length === 0 ? (
-                <div className="px-3 py-6 text-center text-zinc-500">
+                <div className="px-3 py-6 text-center text-subtle">
                   No reasons yet. Add a few to get started.
                 </div>
               ) : (
                 reasons
                   .slice()
-                  .sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label))
-                  .map((reason) => (
-                    <div
-                      key={reason.id}
-                      className="flex items-center justify-between rounded-xl px-3 py-2 hover:bg-zinc-800"
-                    >
-                      <div>
-                        <div className="font-medium text-zinc-100">
-                          {reason.label}
-                        </div>
-                        <div className="text-[10px] text-zinc-500">
-                          {reason.slug} · {reason.source.toLowerCase()}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => toggleReasonActive(reason)}
-                        className={`rounded-full px-3 py-1 text-[10px] font-medium ${
-                          reason.active
-                            ? "bg-emerald-500/20 text-emerald-200"
-                            : "bg-zinc-700 text-zinc-200"
-                        }`}
+                  .sort(
+                    (a, b) =>
+                      a.sortOrder - b.sortOrder ||
+                      a.label.localeCompare(b.label)
+                  )
+                  .map((reason, index) => {
+                    const isCurrentlyFeatured = isFeaturedActive(reason);
+                    const featuredCount = reasons.filter(isFeaturedActive).length;
+                    const canFeature =
+                      reason.active &&
+                      (isCurrentlyFeatured || featuredCount < 3);
+
+                    return (
+                      <motion.div
+                        key={reason.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04, duration: 0.25 }}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
                       >
-                        {reason.active ? "Active" : "Hidden"}
-                      </button>
-                    </div>
-                  ))
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-text">
+                            {reason.label}
+                          </div>
+                          <div className="text-[10px] text-subtle">
+                            {reason.slug} &middot;{" "}
+                            {reason.source.toLowerCase()}
+                            {isCurrentlyFeatured && (
+                              <span className="ml-1 text-accent">
+                                &middot; {featuredTimeLeft(reason)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {reason.active && (
+                            <motion.button
+                              type="button"
+                              onClick={() => toggleReasonFeatured(reason)}
+                              disabled={!canFeature && !isCurrentlyFeatured}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              title={
+                                !canFeature && !isCurrentlyFeatured
+                                  ? "Max 3 featured reasons"
+                                  : isCurrentlyFeatured
+                                    ? "Remove from featured"
+                                    : "Feature this reason"
+                              }
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                isCurrentlyFeatured
+                                  ? "bg-accent/15 text-accent"
+                                  : canFeature
+                                    ? "bg-surface-hover text-muted hover:bg-accent/10 hover:text-accent"
+                                    : "bg-surface-hover text-subtle opacity-40 cursor-not-allowed"
+                              }`}
+                            >
+                              {isCurrentlyFeatured ? "Featured" : "Feature"}
+                            </motion.button>
+                          )}
+                          <motion.button
+                            type="button"
+                            onClick={() => toggleReasonActive(reason)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`rounded-full px-3 py-1 text-[10px] font-medium transition-colors ${
+                              reason.active
+                                ? "bg-success/15 text-success"
+                                : "bg-surface-hover text-muted"
+                            }`}
+                          >
+                            {reason.active ? "Active" : "Hidden"}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })
               )}
             </div>
           </section>
 
-          <section className="rounded-3xl border border-zinc-800 bg-zinc-950/80 px-4 py-5 sm:px-6">
+          {/* Recent visits */}
+          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:200ms]">
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-zinc-100">Recent visits</h2>
-              <span className="text-xs text-zinc-500">
+              <h2 className="text-sm font-semibold text-text">
+                Recent visits
+              </h2>
+              <span className="text-xs text-subtle">
                 Last {visits.length || 0}
               </span>
             </div>
-            <div className="max-h-72 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900/40 text-xs">
+            <div className="glass-card max-h-72 overflow-y-auto rounded-xl text-xs">
               <table className="min-w-full border-collapse">
-                <thead className="sticky top-0 bg-zinc-900/90 text-[10px] uppercase tracking-wide text-zinc-500">
+                <thead className="sticky top-0 bg-base/90 backdrop-blur-sm text-[10px] uppercase tracking-wide text-subtle">
                   <tr>
-                    <th className="px-3 py-2 text-left">Photo</th>
-                    <th className="px-3 py-2 text-left">Name</th>
-                    <th className="px-3 py-2 text-left">Email</th>
-                    <th className="px-3 py-2 text-left">Reason</th>
-                    <th className="px-3 py-2 text-left">When</th>
+                    <th className="px-3 py-2.5 text-left">Photo</th>
+                    <th className="px-3 py-2.5 text-left">Name</th>
+                    <th className="px-3 py-2.5 text-left">Email</th>
+                    <th className="px-3 py-2.5 text-left">Reason</th>
+                    <th className="px-3 py-2.5 text-left">When</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loading ? (
                     <tr>
-                      <td
-                        colSpan={5}
-                        className="px-3 py-6 text-center text-zinc-500"
-                      >
-                        Loading visits…
+                      <td colSpan={5} className="p-3">
+                        <div className="space-y-2">
+                          {[...Array(5)].map((_, i) => (
+                            <div key={i} className="skeleton h-8 w-full" />
+                          ))}
+                        </div>
                       </td>
                     </tr>
                   ) : visits.length === 0 ? (
                     <tr>
                       <td
                         colSpan={5}
-                        className="px-3 py-6 text-center text-zinc-500"
+                        className="px-3 py-6 text-center text-subtle"
                       >
                         No visits recorded yet.
                       </td>
                     </tr>
                   ) : (
-                    visits.map((visit) => (
-                      <tr
+                    visits.map((visit, index) => (
+                      <motion.tr
                         key={visit.id}
-                        className="border-t border-zinc-800/80"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: index * 0.03, duration: 0.3 }}
+                        className="border-t border-edge transition-colors hover:bg-surface-hover"
                       >
-                        <td className="px-3 py-2">
+                        <td className="px-3 py-2.5">
                           {visit.photoUrl ? (
                             <img
                               src={visit.photoUrl}
                               alt={`${visit.fullName}'s photo`}
-                              className="h-8 w-8 rounded-full object-cover border border-zinc-700"
+                              className="h-8 w-8 rounded-full object-cover border border-edge"
                               onError={(e) => {
-                                // Hide image on error
-                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.style.display = "none";
                               }}
                             />
                           ) : (
-                            <div className="h-8 w-8 rounded-full bg-zinc-700 border border-zinc-600 flex items-center justify-center">
-                              <span className="text-[8px] text-zinc-400">No photo</span>
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-edge bg-surface">
+                              <span className="text-[8px] text-subtle">
+                                &mdash;
+                              </span>
                             </div>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-zinc-100">
+                        <td className="px-3 py-2.5 text-text">
                           {visit.fullName}
                         </td>
-                        <td className="px-3 py-2 text-zinc-300">
+                        <td className="px-3 py-2.5 text-muted">
                           {visit.email}
                         </td>
-                        <td className="px-3 py-2 text-zinc-300">
-                          {visit.visitReasonLabel ?? "—"}
+                        <td className="px-3 py-2.5 text-muted">
+                          {visit.visitReasonLabel ?? "\u2014"}
                         </td>
-                        <td className="px-3 py-2 text-zinc-500">
+                        <td className="px-3 py-2.5 text-subtle">
                           {formatRelative(visit.createdAt)}
                         </td>
-                      </tr>
+                      </motion.tr>
                     ))
                   )}
                 </tbody>
@@ -364,3 +482,22 @@ function formatRelative(iso: string) {
   return date.toLocaleDateString();
 }
 
+const FEATURED_TTL_MS = 48 * 60 * 60 * 1000;
+
+/** Is this reason currently featured (within the 48h window)? */
+function isFeaturedActive(reason: VisitReason): boolean {
+  if (!reason.featured || !reason.featuredAt) return false;
+  return Date.now() - new Date(reason.featuredAt).getTime() < FEATURED_TTL_MS;
+}
+
+/** Human-readable remaining featured time, e.g. "23h left" or "45m left" */
+function featuredTimeLeft(reason: VisitReason): string {
+  if (!reason.featuredAt) return "";
+  const elapsed = Date.now() - new Date(reason.featuredAt).getTime();
+  const remainingMs = FEATURED_TTL_MS - elapsed;
+  if (remainingMs <= 0) return "expired";
+  const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
+}

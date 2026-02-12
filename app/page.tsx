@@ -1,34 +1,44 @@
+"use client";
+
+import { motion } from "framer-motion";
+
 export default function Home() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-900 text-zinc-50">
+    <div className="flex min-h-screen items-center justify-center text-text">
       <main className="flex min-h-screen w-full max-w-4xl flex-col items-center justify-center px-6 py-10 text-center sm:px-12">
-        <h1 className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-          Visitor kiosk
+        <h1 className="mb-4 text-5xl font-semibold tracking-tight sm:text-6xl animate-fade-in-up">
+          <span className="gradient-text">Visitor kiosk</span>
         </h1>
-        <p className="mb-8 max-w-lg text-sm text-zinc-400 sm:text-base">
+        <p className="mb-10 max-w-lg text-sm text-muted sm:text-base animate-fade-in-up [animation-delay:150ms]">
           This is the admin entry point. The actual check-in flow lives at{" "}
-          <code className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-200">
+          <code className="rounded-md bg-base-dark px-1.5 py-0.5 text-xs text-primary font-mono">
             /kiosk
           </code>{" "}
           and the lightweight dashboard at{" "}
-          <code className="rounded-md bg-zinc-800 px-1.5 py-0.5 text-xs text-zinc-200">
+          <code className="rounded-md bg-base-dark px-1.5 py-0.5 text-xs text-primary font-mono">
             /admin
           </code>
           .
         </p>
-        <div className="flex flex-col gap-3 sm:flex-row">
-          <a
+        <div className="flex flex-col gap-4 sm:flex-row animate-fade-in-up [animation-delay:300ms]">
+          <motion.a
             href="/kiosk"
-            className="rounded-full bg-zinc-50 px-8 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200"
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="rounded-full bg-primary px-10 py-3 text-sm font-medium text-white btn-glow"
           >
             Open kiosk
-          </a>
-          <a
+          </motion.a>
+          <motion.a
             href="/admin"
-            className="rounded-full border border-zinc-700 px-8 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+            whileHover={{ scale: 1.03, y: -1 }}
+            whileTap={{ scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 400, damping: 20 }}
+            className="rounded-full border border-edge px-10 py-3 text-sm font-medium text-text transition-colors hover:border-edge-hover hover:bg-surface"
           >
             Open admin
-          </a>
+          </motion.a>
         </div>
       </main>
     </div>
