@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -434,7 +435,7 @@ function PhotoScreen({
   const [status, setStatus] = useState<CameraStatus>("requesting");
   const [isCapturing, setIsCapturing] = useState(false);
 
-  const stopStream = useCallback(() => {
+  function stopStream() {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
@@ -449,7 +450,6 @@ function PhotoScreen({
       return;
     }
 
-    setStatus("requesting");
     setStatus("requesting");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -516,7 +516,6 @@ function PhotoScreen({
 
   function handleDiscard() {
     onPhotoChange(null);
-    void startCamera();
     void startCamera();
   }
 
