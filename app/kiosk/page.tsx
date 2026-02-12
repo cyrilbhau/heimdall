@@ -24,6 +24,26 @@ const initialFormState: FormState = {
   visitReasonId: "",
 };
 
+/* ── Animation variants ─────────────────────── */
+
+const stepVariants = {
+  enter: { opacity: 0, x: 40 },
+  center: { opacity: 1, x: 0 },
+  exit: { opacity: 0, x: -40 },
+};
+
+const stepTransition = {
+  duration: 0.3,
+  ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
+};
+
+const fadeUp = {
+  initial: { opacity: 0, y: 20 },
+  animate: { opacity: 1, y: 0 },
+};
+
+/* ── Main page ──────────────────────────────── */
+
 export default function KioskPage() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initialFormState);
@@ -31,7 +51,9 @@ export default function KioskPage() {
   const [reasonQuery, setReasonQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(null);
+  const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(
+    null
+  );
 
   useEffect(() => {
     async function loadReasons() {
@@ -95,7 +117,9 @@ export default function KioskPage() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setSubmitError((data as { error?: string }).error ?? "Something went wrong.");
+        setSubmitError(
+          (data as { error?: string }).error ?? "Something went wrong."
+        );
         setIsSubmitting(false);
         return;
       }
@@ -111,70 +135,152 @@ export default function KioskPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-900 text-zinc-50">
-      <main className="flex h-screen w-full max-w-4xl flex-col justify-between rounded-none bg-zinc-950 px-6 py-10 shadow-2xl sm:rounded-3xl sm:px-12">
-        {step === 1 && <WelcomeScreen onNext={() => setStep(2)} />}
-
-        {step === 2 && (
-          <NameScreen
-            value={form.fullName}
-            onChange={(fullName) => setForm((prev) => ({ ...prev, fullName }))}
-            onBack={() => setStep(1)}
-            onNext={() => setStep(3)}
-          />
+    <div className="flex min-h-screen items-center justify-center text-text">
+      <main className="flex h-screen w-full max-w-4xl flex-col justify-between px-6 py-10 sm:px-12">
+        {/* Progress indicator */}
+        {step < 6 && (
+          <nav
+            className="flex justify-center gap-2 py-3"
+            aria-label="Check-in progress"
+          >
+            {[1, 2, 3, 4, 5].map((s) => (
+              <div
+                key={s}
+                className={`h-1 rounded-full transition-all duration-500 ease-out ${
+                  s === step
+                    ? "w-8 bg-primary"
+                    : s < step
+                      ? "w-2 bg-primary/40"
+                      : "w-2 bg-white/10"
+                }`}
+              />
+            ))}
+          </nav>
         )}
 
-        {step === 3 && (
-          <EmailScreen
-            value={form.email}
-            onChange={(email) => setForm((prev) => ({ ...prev, email }))}
-            onBack={() => setStep(2)}
-            onNext={() => setStep(4)}
-          />
-        )}
+        {/* Spacer for step 6 to keep layout consistent */}
+        {step === 6 && <div className="py-3" />}
 
-        {step === 4 && (
-          <PhotoScreen
-            photoDataUrl={form.photoDataUrl}
-            onPhotoChange={(photoDataUrl) =>
-              setForm((prev) => ({
-                ...prev,
-                photoDataUrl,
-              }))
-            }
-            onBack={() => setStep(3)}
-            onNext={() => setStep(5)}
-          />
-        )}
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div
+              key="welcome"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <WelcomeScreen onNext={() => setStep(2)} />
+            </motion.div>
+          )}
 
-        {step === 5 && (
-          <ReasonScreen
-            reasons={filteredReasons}
-            query={reasonQuery}
-            onQueryChange={setReasonQuery}
-            selectedId={form.visitReasonId}
-            onSelect={(visitReasonId) =>
-              setForm((prev) => ({
-                ...prev,
-                visitReasonId,
-              }))
-            }
-            onBack={() => setStep(4)}
-            onSubmit={handleSubmit}
-            isSubmitting={isSubmitting}
-            submitError={submitError}
-          />
-        )}
+          {step === 2 && (
+            <motion.div
+              key="name"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <NameScreen
+                value={form.fullName}
+                onChange={(fullName) =>
+                  setForm((prev) => ({ ...prev, fullName }))
+                }
+                onBack={() => setStep(1)}
+                onNext={() => setStep(3)}
+              />
+            </motion.div>
+          )}
 
-        {step === 6 && (
-          <ConfirmationScreen
-            firstName={firstName}
-            photoUrl={submittedPhotoUrl}
-            onRestart={handleReset}
-          />
-        )}
+          {step === 3 && (
+            <motion.div
+              key="email"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <EmailScreen
+                value={form.email}
+                onChange={(email) => setForm((prev) => ({ ...prev, email }))}
+                onBack={() => setStep(2)}
+                onNext={() => setStep(4)}
+              />
+            </motion.div>
+          )}
 
-        <footer className="mt-6 flex items-center justify-between text-xs text-zinc-500">
+          {step === 4 && (
+            <motion.div
+              key="photo"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <PhotoScreen
+                photoDataUrl={form.photoDataUrl}
+                onPhotoChange={(photoDataUrl) =>
+                  setForm((prev) => ({ ...prev, photoDataUrl }))
+                }
+                onBack={() => setStep(3)}
+                onNext={() => setStep(5)}
+              />
+            </motion.div>
+          )}
+
+          {step === 5 && (
+            <motion.div
+              key="reason"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <ReasonScreen
+                reasons={filteredReasons}
+                query={reasonQuery}
+                onQueryChange={setReasonQuery}
+                selectedId={form.visitReasonId}
+                onSelect={(visitReasonId) =>
+                  setForm((prev) => ({ ...prev, visitReasonId }))
+                }
+                onBack={() => setStep(4)}
+                onSubmit={handleSubmit}
+                isSubmitting={isSubmitting}
+                submitError={submitError}
+              />
+            </motion.div>
+          )}
+
+          {step === 6 && (
+            <motion.div
+              key="confirmation"
+              initial={{ opacity: 0, scale: 0.92 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 22 }}
+              className="flex flex-1 flex-col"
+            >
+              <ConfirmationScreen
+                firstName={firstName}
+                photoUrl={submittedPhotoUrl}
+                onRestart={handleReset}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <footer className="mt-6 flex items-center justify-between text-xs text-subtle">
           <div>Visitor check-in</div>
           <div>Data used for safety and occasional updates.</div>
         </footer>
@@ -183,23 +289,38 @@ export default function KioskPage() {
   );
 }
 
+/* ── Step components ────────────────────────── */
+
 function WelcomeScreen({ onNext }: { onNext: () => void }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <h1 className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-        Welcome in.
-      </h1>
-      <p className="mb-10 max-w-md text-base text-zinc-400 sm:text-lg">
-        Please take a moment to check in so we know who&apos;s in the space and can keep you
-        in the loop about what&apos;s happening here.
-      </p>
-      <button
-        type="button"
-        onClick={onNext}
-        className="rounded-full bg-zinc-50 px-10 py-3 text-base font-medium text-zinc-900 shadow-lg shadow-zinc-50/20 transition hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+      <motion.h1
+        {...fadeUp}
+        transition={{ delay: 0.05, duration: 0.5 }}
+        className="mb-4 text-5xl font-semibold tracking-tight sm:text-6xl"
       >
-        Start check-in
-      </button>
+        <span className="gradient-text">Welcome in.</span>
+      </motion.h1>
+      <motion.p
+        {...fadeUp}
+        transition={{ delay: 0.15, duration: 0.5 }}
+        className="mb-10 max-w-md text-base text-muted sm:text-lg"
+      >
+        Please take a moment to check in so we know who&apos;s in the space and
+        can keep you in the loop about what&apos;s happening here.
+      </motion.p>
+      <motion.div {...fadeUp} transition={{ delay: 0.25, duration: 0.5 }}>
+        <motion.button
+          type="button"
+          onClick={onNext}
+          whileHover={{ scale: 1.04, y: -1 }}
+          whileTap={{ scale: 0.97 }}
+          transition={{ type: "spring", stiffness: 400, damping: 20 }}
+          className="rounded-full bg-primary px-10 py-3.5 text-base font-medium text-white btn-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          Start check-in
+        </motion.button>
+      </motion.div>
     </section>
   );
 }
@@ -224,42 +345,26 @@ function NameScreen({
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           First up, your name.
         </h2>
-        <p className="mt-3 max-w-md text-sm text-zinc-400">
+        <p className="mt-3 max-w-md text-sm text-muted">
           This helps us greet you properly and know who&apos;s in the space.
         </p>
       </header>
 
       <div className="mb-10">
-        <label className="block text-sm font-medium text-zinc-300">
+        <label className="block text-sm font-medium text-muted">
           Full name
           <input
             autoFocus
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="mt-3 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-zinc-50 outline-none ring-0 transition focus:border-zinc-400"
+            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
             placeholder="Alex Smith"
           />
         </label>
       </div>
 
-      <div className="mt-auto flex items-center justify-between pt-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          disabled={!canContinue}
-          onClick={onNext}
-          className="rounded-full bg-zinc-50 px-8 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-        >
-          Next
-        </button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} canContinue={canContinue} />
     </section>
   );
 }
@@ -284,46 +389,31 @@ function EmailScreen({
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           And your email.
         </h2>
-        <p className="mt-3 max-w-md text-sm text-zinc-400">
-          We use this to share event details, updates, and the occasional thoughtful email.
-          No spam, ever.
+        <p className="mt-3 max-w-md text-sm text-muted">
+          We use this to share event details, updates, and the occasional
+          thoughtful email. No spam, ever.
         </p>
       </header>
 
       <div className="mb-10">
-        <label className="block text-sm font-medium text-zinc-300">
+        <label className="block text-sm font-medium text-muted">
           Email address
           <input
             autoFocus
             type="email"
             value={value}
             onChange={(e) => onChange(e.target.value)}
-            className="mt-3 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-base text-zinc-50 outline-none ring-0 transition focus:border-zinc-400"
+            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
             placeholder="you@example.com"
           />
         </label>
-        <p className="mt-2 text-xs text-zinc-500">
-          By continuing, you&apos;re okay with us emailing you about what&apos;s happening here.
+        <p className="mt-2 text-xs text-subtle">
+          By continuing, you&apos;re okay with us emailing you about what&apos;s
+          happening here.
         </p>
       </div>
 
-      <div className="mt-auto flex items-center justify-between pt-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          disabled={!isValid}
-          onClick={onNext}
-          className="rounded-full bg-zinc-50 px-8 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-        >
-          Next
-        </button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} canContinue={isValid} />
     </section>
   );
 }
@@ -433,15 +523,16 @@ function PhotoScreen({
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Quick photo, if you&apos;re okay with it.
         </h2>
-        <p className="mt-3 max-w-md text-sm text-zinc-400">
-          This helps our team recognise you and keep the space safe. You can skip this if
-          the camera isn&apos;t available.
+        <p className="mt-3 max-w-md text-sm text-muted">
+          This helps our team recognise you and keep the space safe. You can skip
+          this if the camera isn&apos;t available.
         </p>
       </header>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
+        {/* Camera / photo preview */}
         <div className="flex-1">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-3xl border border-zinc-800 bg-zinc-900">
+          <div className="glass-card relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
             {hasPhoto && photoDataUrl ? (
               <img
                 src={photoDataUrl}
@@ -449,14 +540,14 @@ function PhotoScreen({
                 className="h-full w-full object-cover"
               />
             ) : status === "unavailable" ? (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-500">
-                This device doesn&apos;t support camera access here. You can continue
-                without a photo.
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-subtle">
+                This device doesn&apos;t support camera access here. You can
+                continue without a photo.
               </div>
             ) : status === "denied" ? (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-500">
-                Camera access was blocked. You can continue without a photo, or enable it
-                in your browser settings.
+              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-subtle">
+                Camera access was blocked. You can continue without a photo, or
+                enable it in your browser settings.
               </div>
             ) : (
               <>
@@ -479,16 +570,20 @@ function PhotoScreen({
             )}
           </div>
         </div>
-        <div className="flex w-full flex-1 flex-col justify-between rounded-3xl border border-dashed border-zinc-800 bg-zinc-900/40 px-4 py-4 text-sm text-zinc-400">
+
+        {/* Info + action panel */}
+        <div className="glass-card flex w-full flex-1 flex-col justify-between rounded-2xl px-5 py-5 text-sm">
           <div>
-            <p className="mb-2 font-medium text-zinc-200">What we do with your photo</p>
-            <ul className="list-disc space-y-1 pl-5 text-xs text-zinc-400">
+            <p className="mb-2 font-medium text-text">
+              What we do with your photo
+            </p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
               <li>Used only for internal check-in and safety.</li>
               <li>Never shared publicly.</li>
             </ul>
           </div>
           <div className="mt-4 flex flex-col gap-2">
-            <button
+            <motion.button
               type="button"
               onClick={hasPhoto ? handleDiscard : handleCapture}
               disabled={
@@ -498,7 +593,9 @@ function PhotoScreen({
                 status === "requesting" ||
                 isCapturing
               }
-              className="rounded-full bg-zinc-50 px-6 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.97 }}
+              className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
             >
               {hasPhoto
                 ? "Discard photo"
@@ -509,40 +606,31 @@ function PhotoScreen({
                 : "Capture photo"}
             </button>
             {hasPhoto && (
-              <p className="text-xs text-emerald-400">Photo captured. You&apos;re set.</p>
+              <motion.p
+                initial={{ opacity: 0, y: 5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-xs text-success"
+              >
+                Photo captured. You&apos;re set.
+              </motion.p>
             )}
             {status === "denied" && !hasPhoto && (
-              <p className="text-xs text-amber-400">
-                Camera access was blocked. You can still continue without a photo.
+              <p className="text-xs text-warning">
+                Camera access was blocked. You can still continue without a
+                photo.
               </p>
             )}
             {status === "unavailable" && !hasPhoto && (
-              <p className="text-xs text-amber-400">
-                Camera isn&apos;t available on this device. You can continue without a
-                photo.
+              <p className="text-xs text-warning">
+                Camera isn&apos;t available on this device. You can continue
+                without a photo.
               </p>
             )}
           </div>
         </div>
       </div>
 
-      <div className="mt-auto flex items-center justify-between pt-4">
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
-        >
-          Back
-        </button>
-        <button
-          type="button"
-          disabled={!canContinue}
-          onClick={onNext}
-          className="rounded-full bg-zinc-50 px-8 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
-        >
-          Next
-        </button>
-      </div>
+      <StepNav onBack={onBack} onNext={onNext} canContinue={canContinue} />
     </section>
   );
 }
@@ -576,73 +664,94 @@ function ReasonScreen({
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Why are you visiting today?
         </h2>
-        <p className="mt-3 max-w-md text-sm text-zinc-400">
-          This helps us understand how people are using the space and what to invite you to
-          next time.
+        <p className="mt-3 max-w-md text-sm text-muted">
+          This helps us understand how people are using the space and what to
+          invite you to next time.
         </p>
       </header>
 
       <div className="mb-4">
-        <label className="block text-sm font-medium text-zinc-300">
+        <label className="block text-sm font-medium text-muted">
           Choose a reason
           <input
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search…"
-            className="mt-3 w-full rounded-2xl border border-zinc-700 bg-zinc-900 px-4 py-3 text-sm text-zinc-50 outline-none ring-0 transition focus:border-zinc-400"
+            placeholder="Search\u2026"
+            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
           />
         </label>
       </div>
 
-      <div className="mb-4 max-h-64 space-y-1 overflow-y-auto rounded-2xl border border-zinc-800 bg-zinc-900/40 p-1">
+      <div className="glass-card mb-4 max-h-64 space-y-1 overflow-y-auto rounded-2xl p-1">
         {reasons.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-zinc-500">
+          <div className="px-4 py-6 text-center text-sm text-subtle">
             No reasons configured yet. Please speak to a team member.
           </div>
         )}
-        {reasons.map((reason) => {
+        {reasons.map((reason, index) => {
           const isSelected = reason.id === selectedId;
           return (
-            <button
+            <motion.button
               key={reason.id}
               type="button"
               onClick={() => onSelect(reason.id)}
-              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition ${
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.03, duration: 0.25 }}
+              whileHover={{ x: 2 }}
+              whileTap={{ scale: 0.99 }}
+              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition-colors ${
                 isSelected
-                  ? "bg-zinc-50 text-zinc-900"
-                  : "bg-transparent text-zinc-100 hover:bg-zinc-800"
+                  ? "bg-primary text-white"
+                  : "text-text hover:bg-surface-hover"
               }`}
             >
               <span>{reason.label}</span>
-              {isSelected && <span className="text-xs font-medium">Selected</span>}
-            </button>
+              {isSelected && (
+                <motion.span
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="text-xs font-medium text-white/80"
+                >
+                  Selected
+                </motion.span>
+              )}
+            </motion.button>
           );
         })}
       </div>
 
       {submitError && (
-        <p className="mb-3 text-sm text-rose-400">
+        <motion.p
+          initial={{ opacity: 0, y: -5 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-3 text-sm text-error"
+        >
           {submitError}
-        </p>
+        </motion.p>
       )}
 
       <div className="mt-auto flex items-center justify-between pt-4">
-        <button
+        <motion.button
           type="button"
           onClick={onBack}
-          className="text-sm text-zinc-400 hover:text-zinc-200"
+          whileHover={{ x: -2 }}
+          whileTap={{ scale: 0.97 }}
+          className="text-sm text-muted transition-colors hover:text-text"
         >
-          Back
-        </button>
-        <button
+          &larr; Back
+        </motion.button>
+        <motion.button
           type="button"
           disabled={!canSubmit}
           onClick={onSubmit}
-          className="rounded-full bg-zinc-50 px-8 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
+          whileHover={canSubmit ? { scale: 1.02 } : {}}
+          whileTap={canSubmit ? { scale: 0.97 } : {}}
+          className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
         >
-          {isSubmitting ? "Finishing up…" : "Finish check-in"}
-        </button>
+          {isSubmitting ? "Finishing up\u2026" : "Finish check-in"}
+        </motion.button>
       </div>
     </section>
   );
@@ -659,32 +768,105 @@ function ConfirmationScreen({
 }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <h2 className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl">
-        You&apos;re all set{firstName ? `, ${firstName}` : ""}.
-      </h2>
-      
-      {photoUrl && (
-        <div className="mb-6">
-          <img
-            src={photoUrl}
-            alt="Visitor check-in photo"
-            className="mx-auto h-32 w-32 rounded-full object-cover border-4 border-zinc-700"
-          />
-        </div>
-      )}
-      
-      <p className="mb-8 max-w-md text-sm text-zinc-400">
-        Thanks for checking in. Make yourself at home. This screen will reset for next
-        visitor in a few seconds.
-      </p>
-      <button
-        type="button"
-        onClick={onRestart}
-        className="rounded-full border border-zinc-700 px-8 py-2.5 text-sm font-medium text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-900"
+      <motion.h2
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1, duration: 0.5 }}
+        className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl"
       >
-        Back to start now
-      </button>
+        <span className="gradient-text">
+          You&apos;re all set{firstName ? `, ${firstName}` : ""}.
+        </span>
+      </motion.h2>
+
+      {photoUrl && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            delay: 0.2,
+            type: "spring",
+            stiffness: 200,
+            damping: 20,
+          }}
+          className="mb-6"
+        >
+          <div className="relative mx-auto h-32 w-32">
+            <div
+              className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary to-accent opacity-50 blur-md"
+              style={{ animation: "glow-ring 3s ease-in-out infinite" }}
+            />
+            <img
+              src={photoUrl}
+              alt="Visitor check-in photo"
+              className="relative h-32 w-32 rounded-full object-cover border-2 border-white/20"
+            />
+          </div>
+        </motion.div>
+      )}
+
+      <motion.p
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3, duration: 0.5 }}
+        className="mb-8 max-w-md text-sm text-muted"
+      >
+        Thanks for checking in. Make yourself at home. This screen will reset for
+        the next visitor in a few seconds.
+      </motion.p>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.4, duration: 0.5 }}
+      >
+        <motion.button
+          type="button"
+          onClick={onRestart}
+          whileHover={{ scale: 1.03 }}
+          whileTap={{ scale: 0.97 }}
+          className="rounded-full border border-edge px-8 py-2.5 text-sm font-medium text-text transition-colors hover:border-edge-hover hover:bg-surface"
+        >
+          Back to start now
+        </motion.button>
+      </motion.div>
     </section>
   );
 }
 
+/* ── Shared step navigation ─────────────────── */
+
+function StepNav({
+  onBack,
+  onNext,
+  canContinue,
+  nextLabel = "Next",
+}: {
+  onBack: () => void;
+  onNext: () => void;
+  canContinue: boolean;
+  nextLabel?: string;
+}) {
+  return (
+    <div className="mt-auto flex items-center justify-between pt-4">
+      <motion.button
+        type="button"
+        onClick={onBack}
+        whileHover={{ x: -2 }}
+        whileTap={{ scale: 0.97 }}
+        className="text-sm text-muted transition-colors hover:text-text"
+      >
+        &larr; Back
+      </motion.button>
+      <motion.button
+        type="button"
+        disabled={!canContinue}
+        onClick={onNext}
+        whileHover={canContinue ? { scale: 1.02 } : {}}
+        whileTap={canContinue ? { scale: 0.97 } : {}}
+        className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+      >
+        {nextLabel}
+      </motion.button>
+    </div>
+  );
+}
