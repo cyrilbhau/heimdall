@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
 
@@ -341,36 +341,36 @@ function PhotoScreen({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  type CameraStatus = "idle" | "ready" | "denied" | "unavailable";
+  type CameraStatus = "idle" | "requesting" | "ready" | "denied" | "unavailable";
 
   const [status, setStatus] = useState<CameraStatus>("idle");
-  const [isRequesting, setIsRequesting] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
 
-  function stopStream() {
+  const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-  }
-
-  useEffect(() => {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      setStatus("unavailable");
-    }
-
-    return () => {
-      stopStream();
-    };
   }, []);
 
-  async function handleEnableCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+  /** Attach the current stream to the always-present <video> element. */
+  const attachStream = useCallback(() => {
+    if (videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {
+        // Ignore play() errors (e.g. user-interaction gate).
+      });
+    }
+  }, []);
+
+  /** Request camera permission and start the stream. */
+  const startCamera = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
       setStatus("unavailable");
       return;
     }
 
-    setIsRequesting(true);
+    setStatus("requesting");
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode: "user" },
@@ -379,25 +379,29 @@ function PhotoScreen({
 
       stopStream();
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play().catch(() => {
-          // Ignore play errors.
-        });
-      }
+
+      // Video element is always in the DOM now, so this always works.
+      attachStream();
       setStatus("ready");
     } catch (error) {
       console.error("Camera error", error);
       setStatus("denied");
-    } finally {
-      setIsRequesting(false);
     }
-  }
+  }, [stopStream, attachStream]);
 
-  async function handleCapture() {
-    if (!videoRef.current) return;
+  // Auto-start camera when the photo step mounts.
+  useEffect(() => {
+    void startCamera();
 
+    return () => {
+      stopStream();
+    };
+  }, [startCamera, stopStream]);
+
+  function handleCapture() {
     const video = videoRef.current;
+    if (!video || !video.srcObject) return;
+
     const canvas = document.createElement("canvas");
     const width = video.videoWidth || 640;
     const height = video.videoHeight || 480;
@@ -416,14 +420,12 @@ function PhotoScreen({
 
   function handleDiscard() {
     onPhotoChange(null);
-    void handleEnableCamera();
+    void startCamera();
   }
 
   const hasPhoto = !!photoDataUrl;
   const canContinue =
     hasPhoto || status === "denied" || status === "unavailable";
-
-  const showVideo = status === "ready" && !hasPhoto;
 
   return (
     <section className="flex flex-1 flex-col justify-center">
@@ -446,13 +448,6 @@ function PhotoScreen({
                 alt="Captured visitor"
                 className="h-full w-full object-cover"
               />
-            ) : showVideo ? (
-              <video
-                ref={videoRef}
-                className="h-full w-full object-cover"
-                muted
-                playsInline
-              />
             ) : status === "unavailable" ? (
               <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-500">
                 This device doesn&apos;t support camera access here. You can continue
@@ -464,9 +459,23 @@ function PhotoScreen({
                 in your browser settings.
               </div>
             ) : (
-              <div className="flex h-full items-center justify-center px-6 text-center text-sm text-zinc-500">
-                When you&apos;re ready, enable the camera to take a quick photo.
-              </div>
+              <>
+                {/* Video element is ALWAYS in the DOM so the ref is available
+                    before the stream arrives — this is the core fix. */}
+                <video
+                  ref={videoRef}
+                  className="h-full w-full object-cover"
+                  muted
+                  playsInline
+                />
+                {(status === "idle" || status === "requesting") && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-zinc-900 px-6 text-center text-sm text-zinc-500">
+                    {status === "requesting"
+                      ? "Requesting camera access…"
+                      : "Starting camera…"}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
@@ -481,32 +490,23 @@ function PhotoScreen({
           <div className="mt-4 flex flex-col gap-2">
             <button
               type="button"
-              onClick={
-                hasPhoto
-                  ? handleDiscard
-                  : status === "ready"
-                  ? handleCapture
-                  : () => {
-                      void handleEnableCamera();
-                    }
-              }
+              onClick={hasPhoto ? handleDiscard : handleCapture}
               disabled={
                 status === "unavailable" ||
                 status === "denied" ||
-                isRequesting ||
-                (status === "ready" && isCapturing)
+                status === "idle" ||
+                status === "requesting" ||
+                isCapturing
               }
               className="rounded-full bg-zinc-50 px-6 py-2.5 text-sm font-medium text-zinc-900 shadow-md shadow-zinc-50/20 transition hover:bg-zinc-200 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-400"
             >
               {hasPhoto
                 ? "Discard photo"
-                : status === "ready"
-                ? isCapturing
-                  ? "Capturing…"
-                  : "Capture photo"
-                : isRequesting
-                ? "Enabling camera…"
-                : "Enable camera"}
+                : isCapturing
+                ? "Capturing…"
+                : status === "requesting" || status === "idle"
+                ? "Starting camera…"
+                : "Capture photo"}
             </button>
             {hasPhoto && (
               <p className="text-xs text-emerald-400">Photo captured. You&apos;re set.</p>
