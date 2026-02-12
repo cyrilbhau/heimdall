@@ -45,6 +45,7 @@ model Visit {
   @@index([visitReasonId])
   @@index([createdAt])
   @@index([email])
+  @@index([fullName])
 }
 
 model CrmSyncEvent {

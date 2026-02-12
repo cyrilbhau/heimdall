@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6;
@@ -9,6 +9,11 @@ type VisitReason = {
   id: string;
   label: string;
   slug: string;
+};
+
+type VisitorSuggestion = {
+  fullName: string;
+  email: string;
 };
 
 type FormState = {
@@ -50,6 +55,11 @@ export default function KioskPage() {
   const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(
     null
   );
+  // Tracks the email of a visitor selected from the autocomplete dropdown.
+  // null = fresh entry (no selection made or email was changed).
+  const [selectedVisitorEmail, setSelectedVisitorEmail] = useState<
+    string | null
+  >(null);
 
   // Track initial mount so step 1 renders visible without waiting for JS
   const isInitialMount = useRef(true);
@@ -78,7 +88,18 @@ export default function KioskPage() {
     setIsSubmitting(false);
     setSubmitError(null);
     setSubmittedPhotoUrl(null);
+    setSelectedVisitorEmail(null);
     setStep(1);
+  }
+
+  /** Called when the user selects a past visitor from the name autocomplete. */
+  function handleVisitorSelect(visitor: VisitorSuggestion) {
+    setForm((prev) => ({
+      ...prev,
+      fullName: visitor.fullName,
+      email: visitor.email,
+    }));
+    setSelectedVisitorEmail(visitor.email);
   }
 
   useEffect(() => {
@@ -198,6 +219,7 @@ export default function KioskPage() {
                 onChange={(fullName) =>
                   setForm((prev) => ({ ...prev, fullName }))
                 }
+                onVisitorSelect={handleVisitorSelect}
                 onBack={() => setStep(1)}
                 onNext={() => setStep(3)}
               />
@@ -217,6 +239,8 @@ export default function KioskPage() {
               <EmailScreen
                 value={form.email}
                 onChange={(email) => setForm((prev) => ({ ...prev, email }))}
+                prefillEmail={selectedVisitorEmail}
+                onEmailDeviation={() => setSelectedVisitorEmail(null)}
                 onBack={() => setStep(2)}
                 onNext={() => setStep(4)}
               />
@@ -327,16 +351,104 @@ function WelcomeScreen({ onNext }: { onNext: () => void }) {
 function NameScreen({
   value,
   onChange,
+  onVisitorSelect,
   onBack,
   onNext,
 }: {
   value: string;
   onChange: (value: string) => void;
+  onVisitorSelect: (visitor: VisitorSuggestion) => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const trimmed = value.trim();
   const canContinue = trimmed.length > 1;
+
+  const [suggestions, setSuggestions] = useState<VisitorSuggestion[]>([]);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [highlightIdx, setHighlightIdx] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
+
+  // Debounced search against the visitor API
+  const searchVisitors = useCallback((query: string) => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    const q = query.trim();
+    if (q.length < 3) {
+      setSuggestions([]);
+      setShowDropdown(false);
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/visitors/search?q=${encodeURIComponent(q)}`
+        );
+        if (!res.ok) return;
+        const data = (await res.json()) as VisitorSuggestion[];
+        setSuggestions(data);
+        setShowDropdown(data.length > 0);
+        setHighlightIdx(-1);
+      } catch {
+        // Silently ignore – the user can still type freely
+      }
+    }, 300);
+  }, []);
+
+  function handleInputChange(newValue: string) {
+    onChange(newValue);
+    searchVisitors(newValue);
+  }
+
+  function handleSelect(visitor: VisitorSuggestion) {
+    onVisitorSelect(visitor);
+    setSuggestions([]);
+    setShowDropdown(false);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!showDropdown || suggestions.length === 0) return;
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightIdx((prev) =>
+        prev < suggestions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightIdx((prev) =>
+        prev > 0 ? prev - 1 : suggestions.length - 1
+      );
+    } else if (e.key === "Enter" && highlightIdx >= 0) {
+      e.preventDefault();
+      handleSelect(suggestions[highlightIdx]);
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+    }
+  }
+
+  function handleBlur() {
+    // Small delay so click on dropdown item can register before hiding
+    blurTimeoutRef.current = setTimeout(() => setShowDropdown(false), 200);
+  }
+
+  function handleFocus() {
+    if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    if (suggestions.length > 0 && value.trim().length >= 3) {
+      setShowDropdown(true);
+    }
+  }
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      if (blurTimeoutRef.current) clearTimeout(blurTimeoutRef.current);
+    };
+  }, []);
 
   return (
     <section className="flex flex-1 flex-col justify-center">
@@ -349,18 +461,67 @@ function NameScreen({
         </p>
       </header>
 
-      <div className="mb-10">
+      <div className="relative mb-10" ref={wrapperRef}>
         <label className="block text-sm font-medium text-muted">
           Full name
           <input
             autoFocus
             type="text"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onBlur={handleBlur}
+            onFocus={handleFocus}
+            autoComplete="off"
             className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
             placeholder="Alex Smith"
+            role="combobox"
+            aria-expanded={showDropdown}
+            aria-autocomplete="list"
+            aria-controls="name-suggestions"
           />
         </label>
+
+        {/* Autocomplete dropdown */}
+        <AnimatePresence>
+          {showDropdown && suggestions.length > 0 && (
+            <motion.ul
+              id="name-suggestions"
+              role="listbox"
+              initial={{ opacity: 0, y: -4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-2xl border border-edge bg-surface p-1 shadow-lg backdrop-blur-md"
+            >
+              {suggestions.map((visitor, idx) => (
+                <li key={`${visitor.fullName}-${visitor.email}`}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => {
+                      // Prevent the input blur from firing before select
+                      e.preventDefault();
+                      handleSelect(visitor);
+                    }}
+                    onMouseEnter={() => setHighlightIdx(idx)}
+                    className={`flex w-full flex-col items-start rounded-xl px-4 py-2.5 text-left transition-colors ${
+                      idx === highlightIdx
+                        ? "bg-primary/15 text-text"
+                        : "text-text hover:bg-surface-hover"
+                    }`}
+                    role="option"
+                    aria-selected={idx === highlightIdx}
+                  >
+                    <span className="text-sm font-medium">
+                      {visitor.fullName}
+                    </span>
+                    <span className="text-xs text-muted">{visitor.email}</span>
+                  </button>
+                </li>
+              ))}
+            </motion.ul>
+          )}
+        </AnimatePresence>
       </div>
 
       <StepNav onBack={onBack} onNext={onNext} canContinue={canContinue} />
@@ -371,16 +532,44 @@ function NameScreen({
 function EmailScreen({
   value,
   onChange,
+  prefillEmail,
+  onEmailDeviation,
   onBack,
   onNext,
 }: {
   value: string;
   onChange: (value: string) => void;
+  prefillEmail: string | null;
+  onEmailDeviation: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const trimmed = value.trim();
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+
+  // Track whether we've already fired the deviation callback
+  const deviationFiredRef = useRef(false);
+
+  // Reset the flag when prefillEmail changes (e.g. user went back and picked a
+  // different suggestion)
+  useEffect(() => {
+    deviationFiredRef.current = false;
+  }, [prefillEmail]);
+
+  function handleChange(newEmail: string) {
+    onChange(newEmail);
+
+    // If the email was pre-filled from an autocomplete selection and the user
+    // changes it, treat this as a fresh entry.
+    if (
+      prefillEmail !== null &&
+      !deviationFiredRef.current &&
+      newEmail !== prefillEmail
+    ) {
+      deviationFiredRef.current = true;
+      onEmailDeviation();
+    }
+  }
 
   return (
     <section className="flex flex-1 flex-col justify-center">
@@ -401,7 +590,7 @@ function EmailScreen({
             autoFocus
             type="email"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => handleChange(e.target.value)}
             className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
             placeholder="you@example.com"
           />
