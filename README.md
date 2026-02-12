@@ -90,3 +90,35 @@ Open `http://localhost:3000/kiosk` for the kiosk and `http://localhost:3000/admi
    - Open `https://your-railway-domain/admin` for the admin dashboard.
 
 For a better kiosk experience, add the `/kiosk` URL to the home screen and enable full-screen or guided-access mode on the device.
+
+### Custom domain: welcome.consciousengines.space
+
+If the apex domain (e.g. `consciousengines.space`) is already redirected elsewhere (e.g. to a GMaps link via Cloudflare), use the subdomain `welcome.consciousengines.space` for this app. Do the following in order.
+
+**1. Restrict the redirect so it does not apply to the subdomain**
+
+- In **Cloudflare** → your zone for the domain → **Rules** → **Redirect Rules**, edit the rule that redirects to the external URL.
+- Change **When incoming requests match** from "All incoming requests" to **Custom filter expression** and use:
+
+  ```text
+  (http.host eq "consciousengines.space") or (http.host eq "www.consciousengines.space")
+  ```
+
+- Keep the action as **301 redirect** to your existing URL. Save.
+
+**2. Add the custom domain in Railway**
+
+- In **Railway** → your Web service → **Settings** → **Networking** / **Domains** → **Add custom domain**.
+- Enter: `welcome.consciousengines.space`.
+- Note the CNAME target Railway shows (e.g. `your-app.up.railway.app`).
+
+**3. Point DNS at Railway**
+
+- In **Cloudflare** → **DNS** → **Records**, add a **CNAME**:
+  - **Name:** `welcome`
+  - **Target:** the Railway CNAME target from step 2
+  - **Proxy:** enabled (orange cloud) is fine.
+
+**4. Verify**
+
+- After DNS propagates (often 1–5 minutes), open `https://welcome.consciousengines.space` (e.g. `/kiosk`, `/admin`).
