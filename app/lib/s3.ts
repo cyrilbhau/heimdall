@@ -2,16 +2,11 @@ import { randomUUID } from "crypto";
 import { PutObjectCommand, S3Client, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
-// Railway: use BUCKET for the S3 API (globally unique name). RAILWAY_BUCKET_NAME is the display name only.
+// Railway Bucket: use the exact variables Railway provides (BUCKET, ENDPOINT, REGION, ACCESS_KEY_ID, SECRET_ACCESS_KEY).
+// No provider-specific logic — Railway abstracts the backing storage (S3-compatible API).
 const BUCKET = process.env.BUCKET ?? process.env.RAILWAY_BUCKET_NAME;
 const ENDPOINT = process.env.ENDPOINT ?? process.env.RAILWAY_BUCKET_ENDPOINT ?? "https://storage.railway.app";
-const REGION_ENV = process.env.REGION ?? "auto";
-// Tigris (t3.storage*.dev, storageapi.dev) requires region "auto" and virtual-hosted style in the signed request.
-const IS_TIGRIS = /t3\.storage|tigris\.dev|storageapi\.dev/i.test(ENDPOINT);
-// Tigris: use literal "auto" per their docs. Others (e.g. Railway): use us-east-1 when env is "auto".
-const REGION = IS_TIGRIS ? "auto" : REGION_ENV === "auto" ? "us-east-1" : REGION_ENV;
-const FORCE_PATH_STYLE = !IS_TIGRIS;
-// AWS SDK expects AWS_*; Railway provides ACCESS_KEY_ID / SECRET_ACCESS_KEY - support both
+const REGION = process.env.REGION ?? "auto";
 const ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID;
 const SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY;
 
@@ -26,22 +21,11 @@ const s3Client =
         endpoint: ENDPOINT,
         region: REGION,
         credentials: { accessKeyId: ACCESS_KEY, secretAccessKey: SECRET_KEY },
-        forcePathStyle: FORCE_PATH_STYLE,
+        forcePathStyle: true, // Railway bucket requirement
       })
     : null;
 
-function agentLog(payload: Record<string, unknown>) {
-  const line = JSON.stringify({ ...payload, agentDebug: true });
-  // eslint-disable-next-line no-console
-  console.log(line);
-  fetch("http://127.0.0.1:7242/ingest/588326a3-ad7a-4578-840d-daa057b61aed", { method: "POST", headers: { "Content-Type": "application/json" }, body: line }).catch(() => {});
-}
-
 export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string> {
-  // #region agent log
-  const credentialSource = process.env.AWS_ACCESS_KEY_ID ? "AWS_*" : process.env.ACCESS_KEY_ID ? "ACCESS_*" : "none";
-  agentLog({ location: "s3.ts:uploadVisitorPhoto", message: "S3 config at upload", data: { endpoint: ENDPOINT, region: REGION, regionEnv: REGION_ENV, forcePathStyle: FORCE_PATH_STYLE, isTigris: IS_TIGRIS, bucket: BUCKET ?? null, hasAccessKey: !!(process.env.AWS_ACCESS_KEY_ID ?? process.env.ACCESS_KEY_ID), hasSecretKey: !!(process.env.AWS_SECRET_ACCESS_KEY ?? process.env.SECRET_ACCESS_KEY), credentialSource, s3ClientExists: !!s3Client }, timestamp: Date.now(), hypothesisId: "H1-H2-H3" });
-  // #endregion
   if (!s3Client || !BUCKET) {
     throw new Error(
       "Railway Bucket is not configured. Set BUCKET (or RAILWAY_BUCKET_NAME), ACCESS_KEY_ID (or AWS_ACCESS_KEY_ID), and SECRET_ACCESS_KEY (or AWS_SECRET_ACCESS_KEY)."
@@ -60,9 +44,6 @@ export async function uploadVisitorPhoto(base64DataUrl: string): Promise<string>
 
   const key = `visits/${new Date().toISOString().slice(0, 10)}/${randomUUID()}.jpg`;
 
-  // #region agent log
-  agentLog({ location: "s3.ts:PutObject", message: "Before PutObject", data: { key, contentType: mimeType, bodyLength: buffer.length }, timestamp: Date.now(), hypothesisId: "H3-H4" });
-  // #endregion
   await s3Client.send(
     new PutObjectCommand({
       Bucket: BUCKET,
