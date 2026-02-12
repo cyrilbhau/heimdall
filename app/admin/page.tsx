@@ -44,6 +44,7 @@ export default function AdminPage() {
         setIsLoggingIn(false);
         return;
       }
+      setIsLoggingIn(false);
       setIsAuthed(true);
     } catch (error) {
       console.error("Login failed", error);

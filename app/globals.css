@@ -2,8 +2,9 @@
 
 /* ────────────────────────────────────────────
    Design tokens — edit the :root values to change the palette.
-   Light mode is the default; dark mode activates automatically
-   via prefers-color-scheme.
+   Light mode is the default; dark mode activates via the
+   html.dark class (toggled by ThemeToggle component,
+   defaults to system preference).
    ──────────────────────────────────────────── */
 
 :root {
@@ -36,9 +37,12 @@
   --c-error: #dc2626;
   --c-warning: #d97706;
 
-  /* Gradient mesh blobs */
-  --c-mesh-1: rgba(0, 102, 255, 0.07);
-  --c-mesh-2: rgba(249, 115, 22, 0.05);
+  /* Animated gradient blobs */
+  --c-blob-1: rgba(59, 130, 246, 0.12);   /* blue */
+  --c-blob-2: rgba(6, 182, 212, 0.09);    /* cyan */
+  --c-blob-3: rgba(249, 115, 22, 0.08);   /* orange */
+  --c-blob-4: rgba(139, 92, 246, 0.07);   /* purple */
+  --c-blob-5: rgba(236, 72, 153, 0.06);   /* pink */
 
   /* Button glow */
   --c-glow: rgba(0, 102, 255, 0.15);
@@ -61,49 +65,50 @@
   --c-scroll-hover: rgba(0, 0, 0, 0.2);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --c-base: #0a1628;
-    --c-base-dark: #060f1e;
+html.dark {
+  --c-base: #0a1628;
+  --c-base-dark: #060f1e;
 
-    --c-primary: #3b82f6;
-    --c-primary-hover: #60a5fa;
-    --c-primary-light: #93c5fd;
+  --c-primary: #3b82f6;
+  --c-primary-hover: #60a5fa;
+  --c-primary-light: #93c5fd;
 
-    --c-accent: #f97316;
-    --c-accent-light: #fb923c;
+  --c-accent: #f97316;
+  --c-accent-light: #fb923c;
 
-    --c-surface: rgba(255, 255, 255, 0.05);
-    --c-surface-hover: rgba(255, 255, 255, 0.08);
-    --c-edge: rgba(255, 255, 255, 0.1);
-    --c-edge-hover: rgba(255, 255, 255, 0.18);
+  --c-surface: rgba(255, 255, 255, 0.05);
+  --c-surface-hover: rgba(255, 255, 255, 0.08);
+  --c-edge: rgba(255, 255, 255, 0.1);
+  --c-edge-hover: rgba(255, 255, 255, 0.18);
 
-    --c-text: #f1f5f9;
-    --c-muted: #94a3b8;
-    --c-subtle: #64748b;
+  --c-text: #f1f5f9;
+  --c-muted: #94a3b8;
+  --c-subtle: #64748b;
 
-    --c-success: #22c55e;
-    --c-error: #ef4444;
-    --c-warning: #f59e0b;
+  --c-success: #22c55e;
+  --c-error: #ef4444;
+  --c-warning: #f59e0b;
 
-    --c-mesh-1: rgba(59, 130, 246, 0.15);
-    --c-mesh-2: rgba(249, 115, 22, 0.1);
+  --c-blob-1: rgba(59, 130, 246, 0.20);
+  --c-blob-2: rgba(6, 182, 212, 0.15);
+  --c-blob-3: rgba(249, 115, 22, 0.12);
+  --c-blob-4: rgba(139, 92, 246, 0.15);
+  --c-blob-5: rgba(236, 72, 153, 0.10);
 
-    --c-glow: rgba(59, 130, 246, 0.25);
-    --c-glow-hover: rgba(59, 130, 246, 0.35);
+  --c-glow: rgba(59, 130, 246, 0.25);
+  --c-glow-hover: rgba(59, 130, 246, 0.35);
 
-    --c-focus-ring: rgba(59, 130, 246, 0.15);
-    --c-focus-glow: rgba(59, 130, 246, 0.08);
+  --c-focus-ring: rgba(59, 130, 246, 0.15);
+  --c-focus-glow: rgba(59, 130, 246, 0.08);
 
-    --c-grad-from: #93c5fd;
-    --c-grad-to: #fb923c;
+  --c-grad-from: #93c5fd;
+  --c-grad-to: #fb923c;
 
-    --c-shimmer-1: rgba(255, 255, 255, 0.03);
-    --c-shimmer-2: rgba(255, 255, 255, 0.06);
+  --c-shimmer-1: rgba(255, 255, 255, 0.03);
+  --c-shimmer-2: rgba(255, 255, 255, 0.06);
 
-    --c-scroll: rgba(255, 255, 255, 0.08);
-    --c-scroll-hover: rgba(255, 255, 255, 0.15);
-  }
+  --c-scroll: rgba(255, 255, 255, 0.08);
+  --c-scroll-hover: rgba(255, 255, 255, 0.15);
 }
 
 /* ────────────────────────────────────────────
@@ -143,10 +148,12 @@ body {
 }
 
 /* ────────────────────────────────────────────
-   Gradient mesh background
+   Animated gradient background (Stripe-inspired)
+   5 overlapping blobs with independent animations
+   create an organic, aurora-like color wash.
    ──────────────────────────────────────────── */
 
-.gradient-mesh {
+.stripe-gradient {
   position: fixed;
   inset: 0;
   z-index: 0;
@@ -154,29 +161,50 @@ body {
   pointer-events: none;
 }
 
-.gradient-mesh::before {
-  content: "";
+.stripe-gradient .blob {
   position: absolute;
-  width: 80%;
-  height: 80%;
-  top: -30%;
-  right: -20%;
-  background: radial-gradient(circle, var(--c-mesh-1), transparent 70%);
-  filter: blur(80px);
-  animation: drift 25s ease-in-out infinite;
+  border-radius: 50%;
+  will-change: transform;
 }
 
-.gradient-mesh::after {
-  content: "";
-  position: absolute;
-  width: 70%;
-  height: 70%;
-  bottom: -20%;
-  left: -20%;
-  background: radial-gradient(circle, var(--c-mesh-2), transparent 70%);
-  filter: blur(80px);
-  animation: drift 25s ease-in-out infinite;
-  animation-delay: -12s;
+.stripe-gradient .blob-1 {
+  width: 55vmax;
+  height: 55vmax;
+  top: -20%;
+  right: -12%;
+  background: radial-gradient(circle at center, var(--c-blob-1), transparent 70%);
+}
+
+.stripe-gradient .blob-2 {
+  width: 50vmax;
+  height: 50vmax;
+  bottom: -18%;
+  left: -12%;
+  background: radial-gradient(circle at center, var(--c-blob-2), transparent 70%);
+}
+
+.stripe-gradient .blob-3 {
+  width: 42vmax;
+  height: 42vmax;
+  top: 35%;
+  right: -8%;
+  background: radial-gradient(circle at center, var(--c-blob-3), transparent 70%);
+}
+
+.stripe-gradient .blob-4 {
+  width: 60vmax;
+  height: 60vmax;
+  top: -28%;
+  left: -18%;
+  background: radial-gradient(circle at center, var(--c-blob-4), transparent 70%);
+}
+
+.stripe-gradient .blob-5 {
+  width: 36vmax;
+  height: 36vmax;
+  bottom: -8%;
+  left: 35%;
+  background: radial-gradient(circle at center, var(--c-blob-5), transparent 70%);
 }
 
 /* ────────────────────────────────────────────
@@ -301,19 +329,6 @@ textarea:focus {
   to {
     opacity: 1;
     transform: scale(1);
-  }
-}
-
-@keyframes drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(3%, 5%) scale(1.03);
-  }
-  66% {
-    transform: translate(-2%, 3%) scale(0.97);
   }
 }
 

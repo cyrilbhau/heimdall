@@ -89,6 +89,11 @@ export default function KioskPage() {
     }
   }, [step]);
 
+  // Shift the gradient background blobs on every step change
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("gradient:shift"));
+  }, [step]);
+
   const filteredReasons = useMemo(() => {
     const q = reasonQuery.trim().toLowerCase();
     if (!q) return reasons;
@@ -434,7 +439,9 @@ function PhotoScreen({
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
-  }, []);
+  }
+
+  const cancelledRef = useRef(false);
 
   async function startCamera() {
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -450,22 +457,39 @@ function PhotoScreen({
         audio: false,
       });
 
+      // If component unmounted while waiting for permission, stop the stream immediately
+      if (cancelledRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+
       stopStream();
       streamRef.current = stream;
-
-      // Video element is always in the DOM now, so this always works.
-      attachStream();
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        try {
+          await videoRef.current.play();
+        } catch {
+          // Autoplay was blocked — stream is assigned but video won't play
+          setStatus("denied");
+          return;
+        }
+      }
       setStatus("ready");
     } catch (error) {
       console.error("Camera error", error);
-      setStatus("denied");
+      if (!cancelledRef.current) {
+        setStatus("denied");
+      }
     }
   }
 
   // Auto-request camera when the step mounts
   useEffect(() => {
+    cancelledRef.current = false;
     void startCamera();
     return () => {
+      cancelledRef.current = true;
       stopStream();
     };
   }, []);
@@ -658,7 +682,7 @@ function ReasonScreen({
             type="text"
             value={query}
             onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search\u2026"
+            placeholder="Search for your reason here..."
             className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
           />
         </label>

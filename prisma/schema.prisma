@@ -11,6 +11,7 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model VisitReason {
@@ -41,18 +42,24 @@ model Visit {
   updatedAt     DateTime @updatedAt
 
   crmSyncEvents CrmSyncEvent[]
+
+  @@index([visitReasonId])
+  @@index([createdAt])
+  @@index([email])
 }
 
 model CrmSyncEvent {
   id        String   @id @default(cuid())
   visitId   String
-  visit     Visit    @relation(fields: [visitId], references: [id])
+  visit     Visit    @relation(fields: [visitId], references: [id], onDelete: Cascade)
   provider  String
   status    String   // e.g. SUCCESS, FAILED
   error     String?
   sentAt    DateTime?
 
   createdAt DateTime @default(now())
+
+  @@index([visitId])
 }
 
 model LumaEvent {

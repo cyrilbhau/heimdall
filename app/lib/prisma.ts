@@ -19,9 +19,18 @@ function createPrismaClient(): PrismaClient {
   return new PrismaClient({ adapter });
 }
 
+// Module-scoped singleton so production doesn't leak connections
+let _client: PrismaClient | undefined;
+
 function getPrisma(): PrismaClient {
-  if (global.prisma) return global.prisma;
+  if (_client) return _client;
+  if (global.prisma) {
+    _client = global.prisma;
+    return _client;
+  }
   const client = createPrismaClient();
+  _client = client;
+  // In dev, also store on global so HMR doesn't create extra clients
   if (process.env.NODE_ENV !== "production") {
     global.prisma = client;
   }
