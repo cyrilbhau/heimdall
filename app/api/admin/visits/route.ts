@@ -33,7 +33,7 @@ export async function GET() {
         id: v.id,
         fullName: v.fullName,
         email: v.email,
-        visitReasonLabel: v.visitReason?.label ?? null,
+        visitReasonLabel: v.visitReason?.label ?? v.customReason ?? null,
         source: v.source,
         createdAt: v.createdAt,
         photoUrl,

@@ -10,6 +10,8 @@ type VisitReason = {
   active: boolean;
   sortOrder: number;
   source: "MANUAL" | "LUMA";
+  featured: boolean;
+  featuredAt: string | null;
 };
 
 type VisitSummary = {
@@ -190,6 +192,32 @@ function AdminDashboard() {
     }
   }
 
+  async function toggleReasonFeatured(reason: VisitReason) {
+    const nowFeatured = isFeaturedActive(reason);
+    try {
+      const res = await fetch("/api/admin/visit-reasons", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reason.id, featured: !nowFeatured }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          (data as { error?: string }).error ?? "Failed to update reason"
+        );
+      }
+      const updated = (await res.json()) as VisitReason;
+      setReasons((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+    } catch (err) {
+      console.error(err);
+      setError(
+        err instanceof Error ? err.message : "Unable to update reason."
+      );
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-start justify-center text-text">
       <main className="flex w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-10">
@@ -272,37 +300,78 @@ function AdminDashboard() {
                       a.sortOrder - b.sortOrder ||
                       a.label.localeCompare(b.label)
                   )
-                  .map((reason, index) => (
-                    <motion.div
-                      key={reason.id}
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.04, duration: 0.25 }}
-                      className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
-                    >
-                      <div>
-                        <div className="font-medium text-text">
-                          {reason.label}
-                        </div>
-                        <div className="text-[10px] text-subtle">
-                          {reason.slug} &middot; {reason.source.toLowerCase()}
-                        </div>
-                      </div>
-                      <motion.button
-                        type="button"
-                        onClick={() => toggleReasonActive(reason)}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        className={`rounded-full px-3 py-1 text-[10px] font-medium transition-colors ${
-                          reason.active
-                            ? "bg-success/15 text-success"
-                            : "bg-surface-hover text-muted"
-                        }`}
+                  .map((reason, index) => {
+                    const isCurrentlyFeatured = isFeaturedActive(reason);
+                    const featuredCount = reasons.filter(isFeaturedActive).length;
+                    const canFeature =
+                      reason.active &&
+                      (isCurrentlyFeatured || featuredCount < 3);
+
+                    return (
+                      <motion.div
+                        key={reason.id}
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.04, duration: 0.25 }}
+                        className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
                       >
-                        {reason.active ? "Active" : "Hidden"}
-                      </motion.button>
-                    </motion.div>
-                  ))
+                        <div className="min-w-0 flex-1">
+                          <div className="font-medium text-text">
+                            {reason.label}
+                          </div>
+                          <div className="text-[10px] text-subtle">
+                            {reason.slug} &middot;{" "}
+                            {reason.source.toLowerCase()}
+                            {isCurrentlyFeatured && (
+                              <span className="ml-1 text-accent">
+                                &middot; {featuredTimeLeft(reason)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          {reason.active && (
+                            <motion.button
+                              type="button"
+                              onClick={() => toggleReasonFeatured(reason)}
+                              disabled={!canFeature && !isCurrentlyFeatured}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              title={
+                                !canFeature && !isCurrentlyFeatured
+                                  ? "Max 3 featured reasons"
+                                  : isCurrentlyFeatured
+                                    ? "Remove from featured"
+                                    : "Feature this reason"
+                              }
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                                isCurrentlyFeatured
+                                  ? "bg-accent/15 text-accent"
+                                  : canFeature
+                                    ? "bg-surface-hover text-muted hover:bg-accent/10 hover:text-accent"
+                                    : "bg-surface-hover text-subtle opacity-40 cursor-not-allowed"
+                              }`}
+                            >
+                              {isCurrentlyFeatured ? "Featured" : "Feature"}
+                            </motion.button>
+                          )}
+                          <motion.button
+                            type="button"
+                            onClick={() => toggleReasonActive(reason)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                            className={`rounded-full px-3 py-1 text-[10px] font-medium transition-colors ${
+                              reason.active
+                                ? "bg-success/15 text-success"
+                                : "bg-surface-hover text-muted"
+                            }`}
+                          >
+                            {reason.active ? "Active" : "Hidden"}
+                          </motion.button>
+                        </div>
+                      </motion.div>
+                    );
+                  })
               )}
             </div>
           </section>
@@ -411,4 +480,24 @@ function formatRelative(iso: string) {
   const diffHours = Math.round(diffMinutes / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
   return date.toLocaleDateString();
+}
+
+const FEATURED_TTL_MS = 48 * 60 * 60 * 1000;
+
+/** Is this reason currently featured (within the 48h window)? */
+function isFeaturedActive(reason: VisitReason): boolean {
+  if (!reason.featured || !reason.featuredAt) return false;
+  return Date.now() - new Date(reason.featuredAt).getTime() < FEATURED_TTL_MS;
+}
+
+/** Human-readable remaining featured time, e.g. "23h left" or "45m left" */
+function featuredTimeLeft(reason: VisitReason): string {
+  if (!reason.featuredAt) return "";
+  const elapsed = Date.now() - new Date(reason.featuredAt).getTime();
+  const remainingMs = FEATURED_TTL_MS - elapsed;
+  if (remainingMs <= 0) return "expired";
+  const hours = Math.floor(remainingMs / (1000 * 60 * 60));
+  const minutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (hours > 0) return `${hours}h ${minutes}m left`;
+  return `${minutes}m left`;
 }

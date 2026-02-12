@@ -19,7 +19,8 @@ type VisitRequestBody = {
   fullName: string;
   email: string;
   photoDataUrl?: string | null;
-  visitReasonId: string;
+  visitReasonId?: string | null;
+  customReason?: string | null;
   source?: "KIOSK" | "MANUAL" | "API";
 };
 
@@ -32,7 +33,8 @@ export async function POST(request: Request) {
 
     const fullName = body.fullName?.trim();
     const email = body.email?.trim();
-    const visitReasonId = body.visitReasonId;
+    const visitReasonId = body.visitReasonId || null;
+    const customReason = body.customReason?.trim() || null;
 
     if (!fullName) {
       logEvent('warn', 'Invalid submission: missing fullName', { body });
@@ -42,22 +44,67 @@ export async function POST(request: Request) {
       logEvent('warn', 'Invalid submission: invalid email', { email });
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
     }
-    if (!visitReasonId) {
-      logEvent('warn', 'Invalid submission: missing visitReasonId', { body });
-      return NextResponse.json({ error: "visitReasonId is required" }, { status: 400 });
-    }
 
+    // Photo upload (best-effort)
     let photoKey: string | null = null;
     let photoUrl: string | null = null;
     if (body.photoDataUrl) {
       try {
         photoKey = await uploadVisitorPhoto(body.photoDataUrl);
-        // Generate presigned URL for immediate use
         photoUrl = await generatePresignedUrl(photoKey);
         logEvent('info', 'Photo uploaded successfully', { photoKey });
       } catch (error) {
         logEvent('error', 'Photo upload failed', { error: error instanceof Error ? error.message : 'Unknown error' });
-        // Continue without photo - don't block the visitor experience
+      }
+    }
+
+    // Determine the final visitReasonId and customReason to store.
+    // If a predefined reason was selected, use it directly.
+    // If a custom reason was typed, check for auto-promotion (3rd occurrence).
+    // If neither, the visitor skipped — both stay null.
+    let finalReasonId: string | null = visitReasonId;
+    let finalCustomReason: string | null = customReason;
+
+    if (!visitReasonId && customReason) {
+      // Count past visits with the same custom reason (case-insensitive exact match)
+      const countResult = await prisma.$queryRawUnsafe<{ count: bigint }[]>(
+        `SELECT COUNT(*) as count FROM "Visit" WHERE LOWER("customReason") = LOWER($1)`,
+        customReason
+      );
+      const matchCount = Number(countResult[0]?.count ?? 0);
+
+      if (matchCount >= 2) {
+        // This is the 3rd+ occurrence — promote to a full VisitReason
+        const slug = customReason.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+        try {
+          // Use upsert to handle the race condition where two concurrent requests
+          // try to promote the same custom reason simultaneously
+          const reason = await prisma.visitReason.upsert({
+            where: { slug },
+            create: {
+              label: customReason,
+              slug,
+              active: true,
+              sortOrder: 0,
+              source: "MANUAL",
+            },
+            update: {}, // If it already exists, just use it
+          });
+
+          finalReasonId = reason.id;
+          finalCustomReason = null;
+          logEvent('info', 'Custom reason auto-promoted to VisitReason', {
+            label: customReason,
+            reasonId: reason.id,
+            priorOccurrences: matchCount,
+          });
+        } catch (error) {
+          // If promotion fails (e.g. label uniqueness), just store as custom
+          logEvent('warn', 'Custom reason promotion failed, storing as custom', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+          });
+        }
       }
     }
 
@@ -65,8 +112,9 @@ export async function POST(request: Request) {
       data: {
         fullName,
         email,
-        photoUrl: photoKey, // Store the S3 key, not the full URL
-        visitReasonId,
+        photoUrl: photoKey,
+        visitReasonId: finalReasonId,
+        customReason: finalCustomReason,
         source: body.source ?? "KIOSK",
       },
       include: {
@@ -79,7 +127,9 @@ export async function POST(request: Request) {
       visitId: visit.id, 
       fullName: visit.fullName, 
       duration: `${duration}ms`,
-      hasPhoto: !!photoKey 
+      hasPhoto: !!photoKey,
+      hasReason: !!finalReasonId,
+      hasCustomReason: !!finalCustomReason,
     });
 
     // Fire-and-forget CRM sync; failure here should not block the visitor.
@@ -89,7 +139,7 @@ export async function POST(request: Request) {
         id: visit.id,
         fullName: visit.fullName,
         email: visit.email,
-        visitReasonLabel: visit.visitReason?.label ?? null,
+        visitReasonLabel: visit.visitReason?.label ?? visit.customReason ?? null,
         source: visit.source,
         createdAt: visit.createdAt,
       })
@@ -99,7 +149,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ 
       id: visit.id, 
-      photoUrl: photoUrl // Return presigned URL for immediate display
+      photoUrl: photoUrl
     }, { status: 201 });
   } catch (error: unknown) {
     const duration = Date.now() - startTime;
@@ -113,7 +163,5 @@ export async function POST(request: Request) {
 }
 
 function isValidEmail(value: string) {
-  // Simple, pragmatic email check for kiosk use.
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
 }
-

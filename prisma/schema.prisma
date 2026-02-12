@@ -14,12 +14,14 @@ datasource db {
 }
 
 model VisitReason {
-  id        String       @id @default(cuid())
-  label     String       @unique
-  slug      String       @unique
-  active    Boolean      @default(true)
-  sortOrder Int          @default(0)
-  source    ReasonSource @default(MANUAL)
+  id         String       @id @default(cuid())
+  label      String       @unique
+  slug       String       @unique
+  active     Boolean      @default(true)
+  sortOrder  Int          @default(0)
+  source     ReasonSource @default(MANUAL)
+  featured   Boolean      @default(false)
+  featuredAt DateTime?
 
   visits    Visit[]
 
@@ -28,14 +30,15 @@ model VisitReason {
 }
 
 model Visit {
-  id            String       @id @default(cuid())
+  id            String        @id @default(cuid())
   fullName      String
   email         String
-  photoUrl      String?      // For production, store in object storage and save key/URL here
-  visitReasonId String
-  visitReason   VisitReason  @relation(fields: [visitReasonId], references: [id])
+  photoUrl      String?       // For production, store in object storage and save key/URL here
+  visitReasonId String?
+  visitReason   VisitReason?  @relation(fields: [visitReasonId], references: [id])
+  customReason  String?       // Freeform reason typed at the kiosk
   notes         String?
-  source        VisitSource  @default(KIOSK)
+  source        VisitSource   @default(KIOSK)
 
   createdAt     DateTime @default(now()) // visit timestamp
   updatedAt     DateTime @updatedAt

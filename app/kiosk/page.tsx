@@ -9,6 +9,7 @@ type VisitReason = {
   id: string;
   label: string;
   slug: string;
+  featured: boolean;
 };
 
 type VisitorSuggestion = {
@@ -21,6 +22,7 @@ type FormState = {
   email: string;
   photoDataUrl: string | null;
   visitReasonId: string;
+  customReason: string;
 };
 
 const initialFormState: FormState = {
@@ -28,6 +30,7 @@ const initialFormState: FormState = {
   email: "",
   photoDataUrl: null,
   visitReasonId: "",
+  customReason: "",
 };
 
 /* ── Animation variants (for step transitions after user interaction) ── */
@@ -49,7 +52,6 @@ export default function KioskPage() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormState>(initialFormState);
   const [reasons, setReasons] = useState<VisitReason[]>([]);
-  const [reasonQuery, setReasonQuery] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(
@@ -67,29 +69,31 @@ export default function KioskPage() {
     isInitialMount.current = false;
   }, []);
 
-  useEffect(() => {
-    async function loadReasons() {
-      try {
-        const res = await fetch("/api/visit-reasons");
-        if (!res.ok) return;
-        const data = (await res.json()) as VisitReason[];
-        setReasons(data);
-      } catch (error) {
-        console.error("Failed to load visit reasons", error);
-      }
+  async function loadReasons() {
+    try {
+      const res = await fetch("/api/visit-reasons");
+      if (!res.ok) return;
+      const data = (await res.json()) as VisitReason[];
+      setReasons(data);
+    } catch (error) {
+      console.error("Failed to load visit reasons", error);
     }
+  }
 
+  // Load reasons on mount
+  useEffect(() => {
     loadReasons();
   }, []);
 
   function handleReset() {
     setForm(initialFormState);
-    setReasonQuery("");
     setIsSubmitting(false);
     setSubmitError(null);
     setSubmittedPhotoUrl(null);
     setSelectedVisitorEmail(null);
     setStep(1);
+    // Re-fetch reasons so newly promoted custom reasons appear for the next visitor
+    loadReasons();
   }
 
   /** Called when the user selects a past visitor from the name autocomplete. */
@@ -116,12 +120,6 @@ export default function KioskPage() {
     window.dispatchEvent(new CustomEvent("gradient:shift"));
   }, [step]);
 
-  const filteredReasons = useMemo(() => {
-    const q = reasonQuery.trim().toLowerCase();
-    if (!q) return reasons;
-    return reasons.filter((r) => r.label.toLowerCase().includes(q));
-  }, [reasons, reasonQuery]);
-
   const firstName = useMemo(() => {
     const parts = form.fullName.trim().split(/\s+/);
     return parts[0] ?? "";
@@ -131,16 +129,24 @@ export default function KioskPage() {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      const payload: Record<string, unknown> = {
+        fullName: form.fullName,
+        email: form.email,
+        photoDataUrl: form.photoDataUrl,
+        source: "KIOSK",
+      };
+
+      // Send either a predefined reason, a custom reason, or neither (skip)
+      if (form.visitReasonId) {
+        payload.visitReasonId = form.visitReasonId;
+      } else if (form.customReason.trim()) {
+        payload.customReason = form.customReason.trim();
+      }
+
       const res = await fetch("/api/visits", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          fullName: form.fullName,
-          email: form.email,
-          photoDataUrl: form.photoDataUrl,
-          visitReasonId: form.visitReasonId,
-          source: "KIOSK",
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
@@ -279,15 +285,26 @@ export default function KioskPage() {
               className="flex flex-1 flex-col"
             >
               <ReasonScreen
-                reasons={filteredReasons}
-                query={reasonQuery}
-                onQueryChange={setReasonQuery}
+                reasons={reasons}
                 selectedId={form.visitReasonId}
+                customReason={form.customReason}
                 onSelect={(visitReasonId) =>
-                  setForm((prev) => ({ ...prev, visitReasonId }))
+                  setForm((prev) => ({
+                    ...prev,
+                    visitReasonId,
+                    customReason: "",
+                  }))
+                }
+                onCustomReasonChange={(customReason) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    customReason,
+                    visitReasonId: "",
+                  }))
                 }
                 onBack={() => setStep(4)}
                 onSubmit={handleSubmit}
+                onSkip={handleSubmit}
                 isSubmitting={isSubmitting}
                 submitError={submitError}
               />
@@ -828,91 +845,202 @@ function PhotoScreen({
   );
 }
 
+/* ── Reason icon map (slug → inline SVG) ─── */
+
+const reasonIcons: Record<string, React.ReactNode> = {
+  "meeting-someone": (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <circle cx="9" cy="7" r="3" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><circle cx="18" cy="9" r="2.5" /><path d="M21 21v-1.5a3 3 0 0 0-3-3h-.5" />
+    </svg>
+  ),
+  coworking: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <rect x="3" y="4" width="18" height="12" rx="2" /><path d="M7 20h10" /><path d="M12 16v4" />
+    </svg>
+  ),
+  "attending-an-event": (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="M10 14h4" />
+    </svg>
+  ),
+  "touring-the-space": (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <circle cx="12" cy="12" r="9" /><path d="M16.24 7.76l-4.95 2.83-2.83 4.95 4.95-2.83z" />
+    </svg>
+  ),
+  delivery: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <rect x="2" y="7" width="15" height="13" rx="1.5" /><path d="M17 11h3l2 3v5h-5" /><circle cx="7.5" cy="20" r="1.5" /><circle cx="18.5" cy="20" r="1.5" />
+    </svg>
+  ),
+  interview: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <rect x="3" y="2" width="18" height="20" rx="2" /><path d="M8 7h8" /><path d="M8 11h5" /><circle cx="12" cy="16.5" r="1" />
+    </svg>
+  ),
+  other: (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+      <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
+    </svg>
+  ),
+};
+
+const fallbackIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <path d="M4 7h16M4 12h16M4 17h10" />
+  </svg>
+);
+
+function getReasonIcon(slug: string): React.ReactNode {
+  return reasonIcons[slug] ?? fallbackIcon;
+}
+
 function ReasonScreen({
   reasons,
-  query,
-  onQueryChange,
   selectedId,
+  customReason,
   onSelect,
+  onCustomReasonChange,
   onBack,
   onSubmit,
+  onSkip,
   isSubmitting,
   submitError,
 }: {
   reasons: VisitReason[];
-  query: string;
-  onQueryChange: (value: string) => void;
   selectedId: string;
+  customReason: string;
   onSelect: (id: string) => void;
+  onCustomReasonChange: (value: string) => void;
   onBack: () => void;
   onSubmit: () => void;
+  onSkip: () => void;
   isSubmitting: boolean;
   submitError: string | null;
 }) {
-  const canSubmit = !!selectedId && !isSubmitting;
+  const featured = useMemo(
+    () => reasons.filter((r) => r.featured),
+    [reasons]
+  );
+  const common = useMemo(
+    () => reasons.filter((r) => !r.featured),
+    [reasons]
+  );
+
+  const hasSelection = !!selectedId || customReason.trim().length > 0;
+  const canSubmit = hasSelection && !isSubmitting;
 
   return (
     <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-8">
+      <header className="mb-6">
         <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
           Why are you visiting today?
         </h2>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          This helps us understand how people are using the space and what to
-          invite you to next time.
+        <p className="mt-2 max-w-md text-sm text-muted">
+          Pick a reason, type your own, or skip if you&apos;d rather not say.
         </p>
       </header>
 
+      {/* A – Featured reasons (prominent cards) */}
+      {featured.length > 0 && (
+        <div className="mb-4">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+            Happening now
+          </p>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+            {featured.map((reason, index) => {
+              const isSelected = reason.id === selectedId;
+              return (
+                <motion.button
+                  key={reason.id}
+                  type="button"
+                  onClick={() => onSelect(reason.id)}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.06, duration: 0.25 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`relative overflow-hidden rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                    isSelected
+                      ? "border-primary bg-primary/15 text-text"
+                      : "border-accent/30 bg-accent/5 text-text hover:border-accent/50 hover:bg-accent/10"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-accent">
+                      {getReasonIcon(reason.slug)}
+                    </span>
+                    <span className="text-sm font-semibold leading-snug">
+                      {reason.label}
+                    </span>
+                  </div>
+                  {isSelected && (
+                    <motion.div
+                      layoutId="featured-check"
+                      className="absolute right-3 top-3 text-xs font-medium text-primary"
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                    >
+                      &#10003;
+                    </motion.div>
+                  )}
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* B – Common reasons (icon grid) */}
+      {common.length > 0 && (
+        <div className="mb-4">
+          {featured.length > 0 && (
+            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
+              Or choose a reason
+            </p>
+          )}
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {common.map((reason, index) => {
+              const isSelected = reason.id === selectedId;
+              return (
+                <motion.button
+                  key={reason.id}
+                  type="button"
+                  onClick={() => onSelect(reason.id)}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.03, duration: 0.25 }}
+                  whileHover={{ scale: 1.03 }}
+                  whileTap={{ scale: 0.97 }}
+                  className={`flex flex-col items-center gap-2 rounded-2xl px-3 py-4 text-center text-xs font-medium transition-all ${
+                    isSelected
+                      ? "bg-primary text-white"
+                      : "glass-card text-text hover:bg-surface-hover"
+                  }`}
+                >
+                  <span className={isSelected ? "text-white" : "text-muted"}>
+                    {getReasonIcon(reason.slug)}
+                  </span>
+                  <span className="leading-tight">{reason.label}</span>
+                </motion.button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* C – Custom reason input */}
       <div className="mb-4">
         <label className="block text-sm font-medium text-muted">
-          Choose a reason
+          Or type your own reason
           <input
             type="text"
-            value={query}
-            onChange={(e) => onQueryChange(e.target.value)}
-            placeholder="Search for your reason here..."
-            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
+            value={customReason}
+            onChange={(e) => onCustomReasonChange(e.target.value)}
+            placeholder="e.g. Picking up equipment, attending a workshop..."
+            className="mt-2 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
           />
         </label>
-      </div>
-
-      <div className="glass-card mb-4 max-h-64 space-y-1 overflow-y-auto rounded-2xl p-1">
-        {reasons.length === 0 && (
-          <div className="px-4 py-6 text-center text-sm text-subtle">
-            No reasons configured yet. Please speak to a team member.
-          </div>
-        )}
-        {reasons.map((reason, index) => {
-          const isSelected = reason.id === selectedId;
-          return (
-            <motion.button
-              key={reason.id}
-              type="button"
-              onClick={() => onSelect(reason.id)}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.03, duration: 0.25 }}
-              whileHover={{ x: 2 }}
-              whileTap={{ scale: 0.99 }}
-              className={`flex w-full items-center justify-between rounded-xl px-4 py-3 text-left text-sm transition-colors ${
-                isSelected
-                  ? "bg-primary text-white"
-                  : "text-text hover:bg-surface-hover"
-              }`}
-            >
-              <span>{reason.label}</span>
-              {isSelected && (
-                <motion.span
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-xs font-medium text-white/80"
-                >
-                  Selected
-                </motion.span>
-              )}
-            </motion.button>
-          );
-        })}
       </div>
 
       {submitError && (
@@ -925,6 +1053,7 @@ function ReasonScreen({
         </motion.p>
       )}
 
+      {/* D – Navigation */}
       <div className="mt-auto flex items-center justify-between pt-4">
         <motion.button
           type="button"
@@ -935,16 +1064,29 @@ function ReasonScreen({
         >
           &larr; Back
         </motion.button>
-        <motion.button
-          type="button"
-          disabled={!canSubmit}
-          onClick={onSubmit}
-          whileHover={canSubmit ? { scale: 1.02 } : {}}
-          whileTap={canSubmit ? { scale: 0.97 } : {}}
-          className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
-        >
-          {isSubmitting ? "Finishing up\u2026" : "Finish check-in"}
-        </motion.button>
+
+        <div className="flex items-center gap-4">
+          <motion.button
+            type="button"
+            onClick={onSkip}
+            disabled={isSubmitting}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+            className="text-sm text-subtle transition-colors hover:text-muted disabled:opacity-30"
+          >
+            Skip
+          </motion.button>
+          <motion.button
+            type="button"
+            disabled={!canSubmit}
+            onClick={onSubmit}
+            whileHover={canSubmit ? { scale: 1.02 } : {}}
+            whileTap={canSubmit ? { scale: 0.97 } : {}}
+            className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+          >
+            {isSubmitting ? "Finishing up\u2026" : "Finish check-in"}
+          </motion.button>
+        </div>
       </div>
     </section>
   );

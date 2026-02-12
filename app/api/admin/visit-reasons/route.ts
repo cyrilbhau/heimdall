@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { isAdminAuthenticated } from "@/app/lib/auth";
 
+const FEATURED_TTL_MS = 48 * 60 * 60 * 1000; // 48 hours
+const MAX_FEATURED = 3;
+
 export async function GET() {
   if (!(await isAdminAuthenticated())) {
     return new NextResponse("Unauthorized", { status: 401 });
@@ -55,7 +58,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
-  const { id, label, active, sortOrder } = body ?? {};
+  const { id, label, active, sortOrder, featured } = body ?? {};
 
   if (!id || typeof id !== "string") {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -73,6 +76,36 @@ export async function PATCH(request: Request) {
     data.sortOrder = sortOrder;
   }
 
+  // Handle featured toggle
+  if (typeof featured === "boolean") {
+    if (featured) {
+      // Enforce max 3 actively-featured reasons (within the 48h window)
+      const now = new Date();
+      const cutoff = new Date(now.getTime() - FEATURED_TTL_MS);
+
+      const currentlyFeatured = await prisma.visitReason.count({
+        where: {
+          featured: true,
+          featuredAt: { gte: cutoff },
+          id: { not: id }, // exclude the one being toggled
+        },
+      });
+
+      if (currentlyFeatured >= MAX_FEATURED) {
+        return NextResponse.json(
+          { error: `Cannot feature more than ${MAX_FEATURED} reasons at a time.` },
+          { status: 400 }
+        );
+      }
+
+      data.featured = true;
+      data.featuredAt = now;
+    } else {
+      data.featured = false;
+      data.featuredAt = null;
+    }
+  }
+
   try {
     const updated = await prisma.visitReason.update({
       where: { id },
@@ -85,4 +118,3 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: "Failed to update visit reason" }, { status: 500 });
   }
 }
-
