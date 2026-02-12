@@ -5,6 +5,7 @@ nixPkgs = ["nodejs_22"]
 cmds = [
   "npm ci",
   "npx prisma generate",
+  "npx prisma migrate deploy",
   "npm run build"
 ]
 
