@@ -1,27 +1,109 @@
 @import "tailwindcss";
 
 /* ────────────────────────────────────────────
-   Design tokens — edit these to change the palette
+   Design tokens — edit the :root values to change the palette.
+   Light mode is the default; dark mode activates automatically
+   via prefers-color-scheme.
    ──────────────────────────────────────────── */
 
 :root {
-  --c-base: #0a2540;
-  --c-base-dark: #061b2e;
-  --c-primary: #635bff;
-  --c-primary-hover: #7a73ff;
-  --c-primary-light: #9b95ff;
-  --c-accent: #00d4ff;
-  --c-accent-light: #80e9ff;
-  --c-surface: rgba(255, 255, 255, 0.05);
-  --c-surface-hover: rgba(255, 255, 255, 0.08);
-  --c-edge: rgba(255, 255, 255, 0.1);
-  --c-edge-hover: rgba(255, 255, 255, 0.18);
-  --c-text: #f6f9fc;
-  --c-muted: #adbdcc;
-  --c-subtle: #6b7c93;
-  --c-success: #00d924;
-  --c-error: #df1b41;
-  --c-warning: #f5a623;
+  /* Base / backgrounds */
+  --c-base: #f8fafc;
+  --c-base-dark: #f1f5f9;
+
+  /* Primary (blue) */
+  --c-primary: #0066ff;
+  --c-primary-hover: #0052cc;
+  --c-primary-light: #3b82f6;
+
+  /* Accent (orange) */
+  --c-accent: #f97316;
+  --c-accent-light: #fb923c;
+
+  /* Surfaces & borders */
+  --c-surface: rgba(255, 255, 255, 0.7);
+  --c-surface-hover: rgba(255, 255, 255, 0.9);
+  --c-edge: rgba(0, 0, 0, 0.08);
+  --c-edge-hover: rgba(0, 0, 0, 0.15);
+
+  /* Text */
+  --c-text: #0f172a;
+  --c-muted: #475569;
+  --c-subtle: #94a3b8;
+
+  /* Semantic */
+  --c-success: #16a34a;
+  --c-error: #dc2626;
+  --c-warning: #d97706;
+
+  /* Gradient mesh blobs */
+  --c-mesh-1: rgba(0, 102, 255, 0.07);
+  --c-mesh-2: rgba(249, 115, 22, 0.05);
+
+  /* Button glow */
+  --c-glow: rgba(0, 102, 255, 0.15);
+  --c-glow-hover: rgba(0, 102, 255, 0.25);
+
+  /* Input focus ring */
+  --c-focus-ring: rgba(0, 102, 255, 0.12);
+  --c-focus-glow: rgba(0, 102, 255, 0.06);
+
+  /* Gradient text */
+  --c-grad-from: #0052cc;
+  --c-grad-to: #ea580c;
+
+  /* Skeleton shimmer */
+  --c-shimmer-1: rgba(0, 0, 0, 0.04);
+  --c-shimmer-2: rgba(0, 0, 0, 0.08);
+
+  /* Scrollbar */
+  --c-scroll: rgba(0, 0, 0, 0.1);
+  --c-scroll-hover: rgba(0, 0, 0, 0.2);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --c-base: #0a1628;
+    --c-base-dark: #060f1e;
+
+    --c-primary: #3b82f6;
+    --c-primary-hover: #60a5fa;
+    --c-primary-light: #93c5fd;
+
+    --c-accent: #f97316;
+    --c-accent-light: #fb923c;
+
+    --c-surface: rgba(255, 255, 255, 0.05);
+    --c-surface-hover: rgba(255, 255, 255, 0.08);
+    --c-edge: rgba(255, 255, 255, 0.1);
+    --c-edge-hover: rgba(255, 255, 255, 0.18);
+
+    --c-text: #f1f5f9;
+    --c-muted: #94a3b8;
+    --c-subtle: #64748b;
+
+    --c-success: #22c55e;
+    --c-error: #ef4444;
+    --c-warning: #f59e0b;
+
+    --c-mesh-1: rgba(59, 130, 246, 0.15);
+    --c-mesh-2: rgba(249, 115, 22, 0.1);
+
+    --c-glow: rgba(59, 130, 246, 0.25);
+    --c-glow-hover: rgba(59, 130, 246, 0.35);
+
+    --c-focus-ring: rgba(59, 130, 246, 0.15);
+    --c-focus-glow: rgba(59, 130, 246, 0.08);
+
+    --c-grad-from: #93c5fd;
+    --c-grad-to: #fb923c;
+
+    --c-shimmer-1: rgba(255, 255, 255, 0.03);
+    --c-shimmer-2: rgba(255, 255, 255, 0.06);
+
+    --c-scroll: rgba(255, 255, 255, 0.08);
+    --c-scroll-hover: rgba(255, 255, 255, 0.15);
+  }
 }
 
 /* ────────────────────────────────────────────
@@ -79,11 +161,7 @@ body {
   height: 80%;
   top: -30%;
   right: -20%;
-  background: radial-gradient(
-    circle,
-    rgba(99, 91, 255, 0.18),
-    transparent 70%
-  );
+  background: radial-gradient(circle, var(--c-mesh-1), transparent 70%);
   filter: blur(80px);
   animation: drift 25s ease-in-out infinite;
 }
@@ -95,7 +173,7 @@ body {
   height: 70%;
   bottom: -20%;
   left: -20%;
-  background: radial-gradient(circle, rgba(0, 212, 255, 0.12), transparent 70%);
+  background: radial-gradient(circle, var(--c-mesh-2), transparent 70%);
   filter: blur(80px);
   animation: drift 25s ease-in-out infinite;
   animation-delay: -12s;
@@ -117,11 +195,7 @@ body {
    ──────────────────────────────────────────── */
 
 .gradient-text {
-  background: linear-gradient(
-    135deg,
-    var(--c-primary-light),
-    var(--c-accent)
-  );
+  background: linear-gradient(135deg, var(--c-grad-from), var(--c-grad-to));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -133,15 +207,15 @@ body {
 
 .btn-glow {
   box-shadow:
-    0 0 20px rgba(99, 91, 255, 0.25),
-    0 4px 12px rgba(0, 0, 0, 0.2);
+    0 0 20px var(--c-glow),
+    0 4px 12px rgba(0, 0, 0, 0.1);
   transition: box-shadow 0.3s ease;
 }
 
 .btn-glow:hover:not(:disabled) {
   box-shadow:
-    0 0 30px rgba(99, 91, 255, 0.35),
-    0 4px 16px rgba(0, 0, 0, 0.3);
+    0 0 30px var(--c-glow-hover),
+    0 4px 16px rgba(0, 0, 0, 0.15);
 }
 
 .btn-glow:disabled {
@@ -159,8 +233,8 @@ input[type="search"]:focus,
 textarea:focus {
   border-color: var(--c-primary) !important;
   box-shadow:
-    0 0 0 3px rgba(99, 91, 255, 0.12),
-    0 0 20px rgba(99, 91, 255, 0.06);
+    0 0 0 3px var(--c-focus-ring),
+    0 0 20px var(--c-focus-glow);
 }
 
 /* ────────────────────────────────────────────
@@ -170,9 +244,9 @@ textarea:focus {
 .skeleton {
   background: linear-gradient(
     90deg,
-    rgba(255, 255, 255, 0.03) 25%,
-    rgba(255, 255, 255, 0.06) 50%,
-    rgba(255, 255, 255, 0.03) 75%
+    var(--c-shimmer-1) 25%,
+    var(--c-shimmer-2) 50%,
+    var(--c-shimmer-1) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -180,8 +254,55 @@ textarea:focus {
 }
 
 /* ────────────────────────────────────────────
+   CSS entrance animations (work without JS)
+   ──────────────────────────────────────────── */
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease-out both;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out both;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.5s ease-out both;
+}
+
+/* ────────────────────────────────────────────
    Keyframes
    ──────────────────────────────────────────── */
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
 
 @keyframes drift {
   0%,
@@ -230,10 +351,10 @@ textarea:focus {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--c-scroll);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--c-scroll-hover);
 }

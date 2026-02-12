@@ -55,12 +55,7 @@ export default function AdminPage() {
   if (!isAuthed) {
     return (
       <div className="flex min-h-screen items-center justify-center text-text">
-        <motion.main
-          initial={{ opacity: 0, y: 20, scale: 0.98 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1] }}
-          className="glass-card w-full max-w-sm rounded-2xl px-6 py-8"
-        >
+        <main className="glass-card w-full max-w-sm rounded-2xl px-6 py-8 animate-fade-in-up">
           <h1 className="mb-2 text-xl font-semibold tracking-tight">
             Admin dashboard
           </h1>
@@ -104,7 +99,7 @@ export default function AdminPage() {
               {isLoggingIn ? "Signing in\u2026" : "Sign in"}
             </motion.button>
           </form>
-        </motion.main>
+        </main>
       </div>
     );
   }
@@ -197,12 +192,7 @@ function AdminDashboard() {
   return (
     <div className="flex min-h-screen items-start justify-center text-text">
       <main className="flex w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-10">
-        <motion.header
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between"
-        >
+        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between animate-fade-in-up">
           <div>
             <h1 className="text-2xl font-semibold tracking-tight">
               <span className="gradient-text">Visitor dashboard</span>
@@ -212,7 +202,7 @@ function AdminDashboard() {
               through the door.
             </p>
           </div>
-        </motion.header>
+        </header>
 
         <AnimatePresence>
           {error && (
@@ -229,12 +219,7 @@ function AdminDashboard() {
 
         <div className="grid gap-6 lg:grid-cols-2">
           {/* Visit reasons */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="glass-card rounded-2xl px-5 py-5 sm:px-6"
-          >
+          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:100ms]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text">
                 Visit reasons
@@ -319,15 +304,10 @@ function AdminDashboard() {
                   ))
               )}
             </div>
-          </motion.section>
+          </section>
 
           {/* Recent visits */}
-          <motion.section
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="glass-card rounded-2xl px-5 py-5 sm:px-6"
-          >
+          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:200ms]">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-text">
                 Recent visits
@@ -412,7 +392,7 @@ function AdminDashboard() {
                 </tbody>
               </table>
             </div>
-          </motion.section>
+          </section>
         </div>
       </main>
     </div>

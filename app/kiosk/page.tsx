@@ -24,7 +24,7 @@ const initialFormState: FormState = {
   visitReasonId: "",
 };
 
-/* ── Animation variants ─────────────────────── */
+/* ── Animation variants (for step transitions after user interaction) ── */
 
 const stepVariants = {
   enter: { opacity: 0, x: 40 },
@@ -35,11 +35,6 @@ const stepVariants = {
 const stepTransition = {
   duration: 0.3,
   ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
-};
-
-const fadeUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
 };
 
 /* ── Main page ──────────────────────────────── */
@@ -54,6 +49,12 @@ export default function KioskPage() {
   const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(
     null
   );
+
+  // Track initial mount so step 1 renders visible without waiting for JS
+  const isInitialMount = useRef(true);
+  useEffect(() => {
+    isInitialMount.current = false;
+  }, []);
 
   useEffect(() => {
     async function loadReasons() {
@@ -151,7 +152,7 @@ export default function KioskPage() {
                     ? "w-8 bg-primary"
                     : s < step
                       ? "w-2 bg-primary/40"
-                      : "w-2 bg-white/10"
+                      : "w-2 bg-edge"
                 }`}
               />
             ))}
@@ -166,7 +167,7 @@ export default function KioskPage() {
             <motion.div
               key="welcome"
               variants={stepVariants}
-              initial="enter"
+              initial={isInitialMount.current ? false : "enter"}
               animate="center"
               exit="exit"
               transition={stepTransition}
@@ -294,22 +295,14 @@ export default function KioskPage() {
 function WelcomeScreen({ onNext }: { onNext: () => void }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <motion.h1
-        {...fadeUp}
-        transition={{ delay: 0.05, duration: 0.5 }}
-        className="mb-4 text-5xl font-semibold tracking-tight sm:text-6xl"
-      >
+      <h1 className="mb-4 text-5xl font-semibold tracking-tight sm:text-6xl animate-fade-in-up">
         <span className="gradient-text">Welcome in.</span>
-      </motion.h1>
-      <motion.p
-        {...fadeUp}
-        transition={{ delay: 0.15, duration: 0.5 }}
-        className="mb-10 max-w-md text-base text-muted sm:text-lg"
-      >
+      </h1>
+      <p className="mb-10 max-w-md text-base text-muted sm:text-lg animate-fade-in-up [animation-delay:100ms]">
         Please take a moment to check in so we know who&apos;s in the space and
         can keep you in the loop about what&apos;s happening here.
-      </motion.p>
-      <motion.div {...fadeUp} transition={{ delay: 0.25, duration: 0.5 }}>
+      </p>
+      <div className="animate-fade-in-up [animation-delay:200ms]">
         <motion.button
           type="button"
           onClick={onNext}
@@ -320,7 +313,7 @@ function WelcomeScreen({ onNext }: { onNext: () => void }) {
         >
           Start check-in
         </motion.button>
-      </motion.div>
+      </div>
     </section>
   );
 }
@@ -530,7 +523,6 @@ function PhotoScreen({
       </header>
 
       <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-        {/* Camera / photo preview */}
         <div className="flex-1">
           <div className="glass-card relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
             {hasPhoto && photoDataUrl ? (
@@ -571,7 +563,6 @@ function PhotoScreen({
           </div>
         </div>
 
-        {/* Info + action panel */}
         <div className="glass-card flex w-full flex-1 flex-col justify-between rounded-2xl px-5 py-5 text-sm">
           <div>
             <p className="mb-2 font-medium text-text">
@@ -768,29 +759,14 @@ function ConfirmationScreen({
 }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <motion.h2
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1, duration: 0.5 }}
-        className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl"
-      >
+      <h2 className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl animate-fade-in-up">
         <span className="gradient-text">
           You&apos;re all set{firstName ? `, ${firstName}` : ""}.
         </span>
-      </motion.h2>
+      </h2>
 
       {photoUrl && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            delay: 0.2,
-            type: "spring",
-            stiffness: 200,
-            damping: 20,
-          }}
-          className="mb-6"
-        >
+        <div className="mb-6 animate-scale-in [animation-delay:100ms]">
           <div className="relative mx-auto h-32 w-32">
             <div
               className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary to-accent opacity-50 blur-md"
@@ -799,26 +775,17 @@ function ConfirmationScreen({
             <img
               src={photoUrl}
               alt="Visitor check-in photo"
-              className="relative h-32 w-32 rounded-full object-cover border-2 border-white/20"
+              className="relative h-32 w-32 rounded-full object-cover border-2 border-edge"
             />
           </div>
-        </motion.div>
+        </div>
       )}
 
-      <motion.p
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3, duration: 0.5 }}
-        className="mb-8 max-w-md text-sm text-muted"
-      >
+      <p className="mb-8 max-w-md text-sm text-muted animate-fade-in-up [animation-delay:200ms]">
         Thanks for checking in. Make yourself at home. This screen will reset for
         the next visitor in a few seconds.
-      </motion.p>
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4, duration: 0.5 }}
-      >
+      </p>
+      <div className="animate-fade-in-up [animation-delay:300ms]">
         <motion.button
           type="button"
           onClick={onRestart}
@@ -828,7 +795,7 @@ function ConfirmationScreen({
         >
           Back to start now
         </motion.button>
-      </motion.div>
+      </div>
     </section>
   );
 }
