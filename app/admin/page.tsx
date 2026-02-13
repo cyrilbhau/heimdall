@@ -10,9 +10,17 @@ type VisitReason = {
   active: boolean;
   sortOrder: number;
   source: "MANUAL" | "LUMA";
+  category: "EVENT" | "VISIT" | "OTHER" | null;
   featured: boolean;
   featuredAt: string | null;
 };
+
+const CATEGORY_OPTIONS: { value: "" | "EVENT" | "VISIT" | "OTHER"; label: string }[] = [
+  { value: "", label: "—" },
+  { value: "EVENT", label: "Event" },
+  { value: "VISIT", label: "Visit" },
+  { value: "OTHER", label: "Other" },
+];
 
 type VisitSummary = {
   id: string;
@@ -117,6 +125,7 @@ function AdminDashboard() {
   const [error, setError] = useState<string | null>(null);
 
   const [newLabel, setNewLabel] = useState("");
+  const [newCategory, setNewCategory] = useState<"" | "EVENT" | "VISIT" | "OTHER">("");
   const [isSavingReason, setIsSavingReason] = useState(false);
 
   useEffect(() => {
@@ -154,7 +163,10 @@ function AdminDashboard() {
       const res = await fetch("/api/admin/visit-reasons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ label: newLabel.trim() }),
+        body: JSON.stringify({
+          label: newLabel.trim(),
+          ...(newCategory && { category: newCategory }),
+        }),
       });
       if (!res.ok) {
         throw new Error("Failed to create reason");
@@ -164,6 +176,7 @@ function AdminDashboard() {
         [...prev, created].sort((a, b) => a.sortOrder - b.sortOrder)
       );
       setNewLabel("");
+      setNewCategory("");
     } catch (err) {
       console.error(err);
       setError("Unable to create reason. Please try again.");
@@ -189,6 +202,27 @@ function AdminDashboard() {
     } catch (err) {
       console.error(err);
       setError("Unable to update reason. Please try again.");
+    }
+  }
+
+  async function updateReasonCategory(
+    reason: VisitReason,
+    category: "EVENT" | "VISIT" | "OTHER" | null
+  ) {
+    try {
+      const res = await fetch("/api/admin/visit-reasons", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: reason.id, category }),
+      });
+      if (!res.ok) throw new Error("Failed to update reason");
+      const updated = (await res.json()) as VisitReason;
+      setReasons((prev) =>
+        prev.map((r) => (r.id === updated.id ? updated : r))
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Unable to update category.");
     }
   }
 
@@ -258,14 +292,30 @@ function AdminDashboard() {
               </span>
             </div>
 
-            <form onSubmit={handleCreateReason} className="mb-4 flex gap-2">
+            <form onSubmit={handleCreateReason} className="mb-4 flex flex-wrap items-center gap-2">
               <input
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="Add a new reason\u2026"
-                className="flex-1 rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200 placeholder:text-subtle"
+                placeholder="Add a new reason…"
+                className="min-w-0 flex-1 rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200 placeholder:text-subtle"
               />
+              <select
+                value={newCategory}
+                onChange={(e) =>
+                  setNewCategory(
+                    e.target.value as "" | "EVENT" | "VISIT" | "OTHER"
+                  )
+                }
+                className="rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200"
+                title="Category (Event / Visit / Other)"
+              >
+                {CATEGORY_OPTIONS.map((opt) => (
+                  <option key={opt.value || "none"} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
               <motion.button
                 type="submit"
                 disabled={!newLabel.trim() || isSavingReason}
@@ -322,6 +372,11 @@ function AdminDashboard() {
                           <div className="text-[10px] text-subtle">
                             {reason.slug} &middot;{" "}
                             {reason.source.toLowerCase()}
+                            {reason.category && (
+                              <span className="ml-1 text-accent">
+                                &middot; {reason.category.toLowerCase()}
+                              </span>
+                            )}
                             {isCurrentlyFeatured && (
                               <span className="ml-1 text-accent">
                                 &middot; {featuredTimeLeft(reason)}
@@ -329,7 +384,25 @@ function AdminDashboard() {
                             )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <select
+                            value={reason.category ?? ""}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              updateReasonCategory(
+                                reason,
+                                v === "" ? null : (v as "EVENT" | "VISIT" | "OTHER")
+                              );
+                            }}
+                            className="rounded-lg border border-edge bg-base-dark/60 px-2 py-1 text-[10px] text-text outline-none transition-colors"
+                            title="Category"
+                          >
+                            {CATEGORY_OPTIONS.map((opt) => (
+                              <option key={opt.value || "none"} value={opt.value}>
+                                {opt.label}
+                              </option>
+                            ))}
+                          </select>
                           {reason.active && (
                             <motion.button
                               type="button"

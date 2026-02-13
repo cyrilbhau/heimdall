@@ -23,6 +23,7 @@ export async function GET() {
         label: r.label,
         slug: r.slug,
         featured: isFeatured,
+        category: r.category,
       };
     }),
   );

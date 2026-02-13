@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const { label, slug, active = true, sortOrder = 0, source = "MANUAL" } = body ?? {};
+  const { label, slug, active = true, sortOrder = 0, source = "MANUAL", category } = body ?? {};
 
   if (!label || typeof label !== "string") {
     return NextResponse.json({ error: "Label is required" }, { status: 400 });
@@ -35,14 +35,18 @@ export async function POST(request: Request) {
       : label.trim().toLowerCase().replace(/\s+/g, "-");
 
   try {
+    const createData: Parameters<typeof prisma.visitReason.create>[0]["data"] = {
+      label: label.trim(),
+      slug: normalisedSlug,
+      active: Boolean(active),
+      sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
+      source,
+    };
+    if (category === "EVENT" || category === "VISIT" || category === "OTHER") {
+      createData.category = category;
+    }
     const reason = await prisma.visitReason.create({
-      data: {
-        label: label.trim(),
-        slug: normalisedSlug,
-        active: Boolean(active),
-        sortOrder: Number.isFinite(sortOrder) ? sortOrder : 0,
-        source,
-      },
+      data: createData,
     });
 
     return NextResponse.json(reason, { status: 201 });
@@ -58,7 +62,7 @@ export async function PATCH(request: Request) {
   }
 
   const body = await request.json();
-  const { id, label, active, sortOrder, featured } = body ?? {};
+  const { id, label, active, sortOrder, featured, category } = body ?? {};
 
   if (!id || typeof id !== "string") {
     return NextResponse.json({ error: "id is required" }, { status: 400 });
@@ -74,6 +78,9 @@ export async function PATCH(request: Request) {
   }
   if (typeof sortOrder === "number" && Number.isFinite(sortOrder)) {
     data.sortOrder = sortOrder;
+  }
+  if (category === "EVENT" || category === "VISIT" || category === "OTHER" || category === null) {
+    data.category = category;
   }
 
   // Handle featured toggle

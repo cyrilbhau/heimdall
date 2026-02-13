@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 
-type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 type VisitReason = {
   id: string;
   label: string;
   slug: string;
   featured: boolean;
+  category?: "EVENT" | "VISIT" | "OTHER" | null;
 };
 
 type VisitorSuggestion = {
@@ -62,6 +63,7 @@ export default function KioskPage() {
   const [selectedVisitorEmail, setSelectedVisitorEmail] = useState<
     string | null
   >(null);
+  const [visitType, setVisitType] = useState<"event" | "visit" | null>(null);
 
   // Track initial mount so step 1 renders visible without waiting for JS
   const isInitialMount = useRef(true);
@@ -91,6 +93,7 @@ export default function KioskPage() {
     setSubmitError(null);
     setSubmittedPhotoUrl(null);
     setSelectedVisitorEmail(null);
+    setVisitType(null);
     setStep(1);
     // Re-fetch reasons so newly promoted custom reasons appear for the next visitor
     loadReasons();
@@ -107,7 +110,7 @@ export default function KioskPage() {
   }
 
   useEffect(() => {
-    if (step === 6) {
+    if (step === 7) {
       const timer = setTimeout(() => {
         handleReset();
       }, 5000);
@@ -125,10 +128,30 @@ export default function KioskPage() {
     return parts[0] ?? "";
   }, [form.fullName]);
 
-  async function handleSubmit() {
+  const eventReasons = useMemo(
+    () => reasons.filter((r) => r.category === "EVENT"),
+    [reasons]
+  );
+
+  // When entering step 6 (event path) with exactly one featured event, auto-select and pre-fill
+  useEffect(() => {
+    if (step !== 6 || visitType !== "event" || eventReasons.length !== 1) return;
+    const single = eventReasons[0];
+    if (!single.featured) return;
+    setForm((prev) => ({
+      ...prev,
+      visitReasonId: single.id,
+      customReason: single.label,
+    }));
+  }, [step, visitType, eventReasons]);
+
+  async function handleSubmit(override?: { customReason?: string; visitReasonId?: string | null }) {
     setIsSubmitting(true);
     setSubmitError(null);
     try {
+      const customReason = override?.customReason ?? form.customReason;
+      const visitReasonId = override?.visitReasonId !== undefined ? override.visitReasonId : form.visitReasonId;
+
       const payload: Record<string, unknown> = {
         fullName: form.fullName,
         email: form.email,
@@ -137,10 +160,10 @@ export default function KioskPage() {
       };
 
       // Send either a predefined reason, a custom reason, or neither (skip)
-      if (form.visitReasonId) {
-        payload.visitReasonId = form.visitReasonId;
-      } else if (form.customReason.trim()) {
-        payload.customReason = form.customReason.trim();
+      if (visitReasonId) {
+        payload.visitReasonId = visitReasonId;
+      } else if (customReason?.trim()) {
+        payload.customReason = customReason.trim();
       }
 
       const res = await fetch("/api/visits", {
@@ -160,7 +183,7 @@ export default function KioskPage() {
 
       const data = await res.json();
       setSubmittedPhotoUrl(data.photoUrl || null);
-      setStep(6);
+      setStep(7);
     } catch (error) {
       console.error("Submit failed", error);
       setSubmitError("Unable to submit right now. Please try again.");
@@ -172,12 +195,12 @@ export default function KioskPage() {
     <div className="flex min-h-screen items-center justify-center text-text">
       <main className="flex h-screen w-full max-w-4xl flex-col justify-between px-6 py-10 sm:px-12">
         {/* Progress indicator */}
-        {step < 6 && (
+        {step < 7 && (
           <nav
             className="flex justify-center gap-2 py-3"
             aria-label="Check-in progress"
           >
-            {[1, 2, 3, 4, 5].map((s) => (
+            {[1, 2, 3, 4, 5, 6].map((s) => (
               <div
                 key={s}
                 className={`h-1 rounded-full transition-all duration-500 ease-out ${
@@ -192,8 +215,8 @@ export default function KioskPage() {
           </nav>
         )}
 
-        {/* Spacer for step 6 to keep layout consistent */}
-        {step === 6 && <div className="py-3" />}
+        {/* Spacer for step 7 to keep layout consistent */}
+        {step === 7 && <div className="py-3" />}
 
         <AnimatePresence mode="wait">
           {step === 1 && (
@@ -276,6 +299,30 @@ export default function KioskPage() {
 
           {step === 5 && (
             <motion.div
+              key="choice"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <ChoiceScreen
+                onAttendingEvent={() => {
+                  setVisitType("event");
+                  setStep(6);
+                }}
+                onVisitingSomeone={() => {
+                  setVisitType("visit");
+                  setStep(6);
+                }}
+                onBack={() => setStep(4)}
+              />
+            </motion.div>
+          )}
+
+          {step === 6 && visitType === "event" && (
+            <motion.div
               key="reason"
               variants={stepVariants}
               initial="enter"
@@ -285,7 +332,7 @@ export default function KioskPage() {
               className="flex flex-1 flex-col"
             >
               <ReasonScreen
-                reasons={reasons}
+                reasons={eventReasons}
                 selectedId={form.visitReasonId}
                 customReason={form.customReason}
                 onSelect={(visitReasonId) =>
@@ -302,7 +349,10 @@ export default function KioskPage() {
                     visitReasonId: "",
                   }))
                 }
-                onBack={() => setStep(4)}
+                onBack={() => {
+                  setVisitType(null);
+                  setStep(5);
+                }}
                 onSubmit={handleSubmit}
                 onSkip={handleSubmit}
                 isSubmitting={isSubmitting}
@@ -311,7 +361,31 @@ export default function KioskPage() {
             </motion.div>
           )}
 
-          {step === 6 && (
+          {step === 6 && visitType === "visit" && (
+            <motion.div
+              key="visiting"
+              variants={stepVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={stepTransition}
+              className="flex flex-1 flex-col"
+            >
+              <VisitingSomeoneScreen
+                onBack={() => {
+                  setVisitType(null);
+                  setStep(5);
+                }}
+                onSubmit={(personName) => {
+                  const customReason = personName.trim() ? `Visiting ${personName.trim()}` : "";
+                  handleSubmit({ visitReasonId: null, customReason });
+                }}
+                isSubmitting={isSubmitting}
+              />
+            </motion.div>
+          )}
+
+          {step === 7 && (
             <motion.div
               key="confirmation"
               initial={{ opacity: 0, scale: 0.92 }}
@@ -841,6 +915,165 @@ function PhotoScreen({
       </div>
 
       <StepNav onBack={onBack} onNext={onNext} canContinue={canContinue} />
+    </section>
+  );
+}
+
+const EVENT_ILLUSTRATION_URL =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=480&q=80";
+const VISIT_ILLUSTRATION_URL =
+  "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=480&q=80";
+
+function ChoiceScreen({
+  onAttendingEvent,
+  onVisitingSomeone,
+  onBack,
+}: {
+  onAttendingEvent: () => void;
+  onVisitingSomeone: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <section className="flex flex-1 flex-col justify-center">
+      <header className="mb-8">
+        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          What brings you in today?
+        </h2>
+        <p className="mt-2 max-w-md text-sm text-muted">
+          Choose the option that best fits your visit.
+        </p>
+      </header>
+
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
+        <motion.button
+          type="button"
+          onClick={onAttendingEvent}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          whileHover={{ scale: 1.02, y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="group flex flex-col overflow-hidden rounded-2xl border-2 border-edge bg-base-dark/60 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          <div className="relative aspect-[4/3] overflow-hidden bg-surface">
+            <img
+              src={EVENT_ILLUSTRATION_URL}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-base-dark/80 via-transparent to-transparent opacity-60" />
+          </div>
+          <div className="flex flex-1 flex-col justify-center px-5 py-4">
+            <span className="text-lg font-semibold text-text">
+              Attending an event
+            </span>
+            <span className="mt-1 block text-sm text-muted">
+              Conference, workshop, or gathering
+            </span>
+          </div>
+        </motion.button>
+
+        <motion.button
+          type="button"
+          onClick={onVisitingSomeone}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
+          whileHover={{ scale: 1.02, y: -4 }}
+          whileTap={{ scale: 0.98 }}
+          className="group flex flex-col overflow-hidden rounded-2xl border-2 border-edge bg-base-dark/60 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
+        >
+          <div className="relative aspect-[4/3] overflow-hidden bg-surface">
+            <img
+              src={VISIT_ILLUSTRATION_URL}
+              alt=""
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-base-dark/80 via-transparent to-transparent opacity-60" />
+          </div>
+          <div className="flex flex-1 flex-col justify-center px-5 py-4">
+            <span className="text-lg font-semibold text-text">
+              Visiting someone
+            </span>
+            <span className="mt-1 block text-sm text-muted">
+              Meeting a person or team
+            </span>
+          </div>
+        </motion.button>
+      </div>
+
+      <div className="mt-auto flex items-center pt-8">
+        <motion.button
+          type="button"
+          onClick={onBack}
+          whileHover={{ x: -2 }}
+          whileTap={{ scale: 0.97 }}
+          className="text-sm text-muted transition-colors hover:text-text"
+        >
+          &larr; Back
+        </motion.button>
+      </div>
+    </section>
+  );
+}
+
+function VisitingSomeoneScreen({
+  onBack,
+  onSubmit,
+  isSubmitting,
+}: {
+  onBack: () => void;
+  onSubmit: (personName: string) => void;
+  isSubmitting: boolean;
+}) {
+  const [personName, setPersonName] = useState("");
+
+  return (
+    <section className="flex flex-1 flex-col justify-center">
+      <header className="mb-8">
+        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+          Who are you visiting?
+        </h2>
+        <p className="mt-2 max-w-md text-sm text-muted">
+          Enter the name of the person or team you&apos;re here to see.
+        </p>
+      </header>
+
+      <div className="mb-6">
+        <label className="block text-sm font-medium text-muted">
+          Name
+          <input
+            type="text"
+            value={personName}
+            onChange={(e) => setPersonName(e.target.value)}
+            placeholder="e.g. Jane Smith, Product team"
+            autoFocus
+            className="mt-2 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle focus:border-primary/50"
+          />
+        </label>
+      </div>
+
+      <div className="mt-auto flex items-center justify-between pt-4">
+        <motion.button
+          type="button"
+          onClick={onBack}
+          whileHover={{ x: -2 }}
+          whileTap={{ scale: 0.97 }}
+          className="text-sm text-muted transition-colors hover:text-text"
+        >
+          &larr; Back
+        </motion.button>
+        <motion.button
+          type="button"
+          onClick={() => onSubmit(personName)}
+          disabled={isSubmitting}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.97 }}
+          className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30"
+        >
+          {isSubmitting ? "Finishing up…" : "Finish check-in"}
+        </motion.button>
+      </div>
     </section>
   );
 }

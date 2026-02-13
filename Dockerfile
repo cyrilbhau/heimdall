@@ -10,6 +10,7 @@ RUN npm ci
 # Copy app and generate Prisma client
 COPY . .
 RUN npx prisma generate
+RUN npx prisma migrate deploy
 
 # Build Next.js
 RUN npm run build

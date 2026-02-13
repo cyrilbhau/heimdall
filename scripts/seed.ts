@@ -9,13 +9,13 @@ const prisma = new PrismaClient({
 });
 
 const defaultVisitReasons = [
-  { label: 'Meeting someone', sortOrder: 1 },
-  { label: 'Coworking', sortOrder: 2 },
-  { label: 'Attending an event', sortOrder: 3 },
-  { label: 'Touring the space', sortOrder: 4 },
-  { label: 'Delivery', sortOrder: 5 },
-  { label: 'Interview', sortOrder: 6 },
-  { label: 'Other', sortOrder: 7 },
+  { label: 'Meeting someone', sortOrder: 1, category: null as const },
+  { label: 'Coworking', sortOrder: 2, category: null as const },
+  { label: 'Attending an event', sortOrder: 3, category: 'EVENT' as const },
+  { label: 'Touring the space', sortOrder: 4, category: null as const },
+  { label: 'Delivery', sortOrder: 5, category: null as const },
+  { label: 'Interview', sortOrder: 6, category: null as const },
+  { label: 'Other', sortOrder: 7, category: 'OTHER' as const },
 ];
 
 async function seed() {
@@ -33,6 +33,7 @@ async function seed() {
           active: true,
           sortOrder: reason.sortOrder,
           source: 'MANUAL',
+          category: reason.category,
         },
         create: {
           label: reason.label,
@@ -40,6 +41,7 @@ async function seed() {
           active: true,
           sortOrder: reason.sortOrder,
           source: 'MANUAL',
+          category: reason.category,
         },
       });
       
