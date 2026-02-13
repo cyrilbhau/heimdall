@@ -10,13 +10,12 @@ RUN npm ci
 # Copy app and generate Prisma client
 COPY . .
 RUN npx prisma generate
-RUN npx prisma migrate deploy
 
-# Build Next.js
+# Build Next.js (no DB needed at build time)
 RUN npm run build
 
 ENV NODE_ENV=production
 EXPOSE 3000
 
-# Railway sets PORT at runtime
-CMD ["npm", "run", "start"]
+# Run migrations at runtime when DATABASE_URL is set, then start the app
+CMD ["sh", "-c", "npx prisma migrate deploy && npm run start"]
