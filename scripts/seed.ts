@@ -8,14 +8,18 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL })),
 });
 
-const defaultVisitReasons = [
-  { label: 'Meeting someone', sortOrder: 1, category: null as const },
-  { label: 'Coworking', sortOrder: 2, category: null as const },
-  { label: 'Attending an event', sortOrder: 3, category: 'EVENT' as const },
-  { label: 'Touring the space', sortOrder: 4, category: null as const },
-  { label: 'Delivery', sortOrder: 5, category: null as const },
-  { label: 'Interview', sortOrder: 6, category: null as const },
-  { label: 'Other', sortOrder: 7, category: 'OTHER' as const },
+const defaultVisitReasons: Array<{
+  label: string;
+  sortOrder: number;
+  category: 'EVENT' | 'VISIT' | 'OTHER' | null;
+}> = [
+  { label: 'Meeting someone', sortOrder: 1, category: null },
+  { label: 'Coworking', sortOrder: 2, category: null },
+  { label: 'Attending an event', sortOrder: 3, category: 'EVENT' },
+  { label: 'Touring the space', sortOrder: 4, category: null },
+  { label: 'Delivery', sortOrder: 5, category: null },
+  { label: 'Interview', sortOrder: 6, category: null },
+  { label: 'Other', sortOrder: 7, category: 'OTHER' },
 ];
 
 async function seed() {
