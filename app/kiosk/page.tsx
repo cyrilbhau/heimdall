@@ -3,6 +3,10 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Brand } from "../components/brand";
+import {
+  isValidOptionalIndianPhoneNational,
+  sanitizeIndianPhoneDigits,
+} from "../lib/phone";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -22,6 +26,7 @@ type VisitorSuggestion = {
 type FormState = {
   fullName: string;
   email: string;
+  phone: string;
   photoDataUrl: string | null;
   visitReasonId: string;
   customReason: string;
@@ -30,6 +35,7 @@ type FormState = {
 const initialFormState: FormState = {
   fullName: "",
   email: "",
+  phone: "",
   photoDataUrl: null,
   visitReasonId: "",
   customReason: "",
@@ -155,6 +161,10 @@ export default function KioskPage() {
       const payload: Record<string, unknown> = {
         fullName: form.fullName,
         email: form.email,
+        phone:
+          form.phone.replace(/\D/g, "").length === 10
+            ? `+91${form.phone.replace(/\D/g, "")}`
+            : undefined,
         photoDataUrl: form.photoDataUrl,
         source: "KIOSK",
       };
@@ -288,6 +298,10 @@ export default function KioskPage() {
               <EmailScreen
                 value={form.email}
                 onChange={(email) => setForm((prev) => ({ ...prev, email }))}
+                phone={form.phone}
+                onPhoneChange={(phone) =>
+                  setForm((prev) => ({ ...prev, phone }))
+                }
                 prefillEmail={selectedVisitorEmail}
                 onEmailDeviation={() => setSelectedVisitorEmail(null)}
                 onBack={() => setStep(2)}
@@ -644,6 +658,8 @@ function NameScreen({
 function EmailScreen({
   value,
   onChange,
+  phone,
+  onPhoneChange,
   prefillEmail,
   onEmailDeviation,
   onBack,
@@ -651,13 +667,17 @@ function EmailScreen({
 }: {
   value: string;
   onChange: (value: string) => void;
+  phone: string;
+  onPhoneChange: (value: string) => void;
   prefillEmail: string | null;
   onEmailDeviation: () => void;
   onBack: () => void;
   onNext: () => void;
 }) {
   const trimmed = value.trim();
-  const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
+  const phoneOk = isValidOptionalIndianPhoneNational(phone);
+  const isValid = emailValid && phoneOk;
 
   const deviationFiredRef = useRef(false);
 
@@ -682,10 +702,10 @@ function EmailScreen({
       <StepHeader
         label="Step 03 · Email"
         title="And your email."
-        description="We use this to share event details, updates, and the occasional thoughtful email. No spam, ever."
+        description="We use this to share event details, updates, and the occasional thoughtful email. No spam, ever. Phone is optional - we'll add you to the space's WhatsApp group for coworking and other updates."
       />
 
-      <div className="mb-10 max-w-[560px]">
+      <div className="mb-10 max-w-[560px] space-y-6">
         <label className="block">
           <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
             Email address
@@ -693,13 +713,61 @@ function EmailScreen({
           <input
             autoFocus
             type="email"
+            autoComplete="email"
             value={value}
             onChange={(e) => handleChange(e.target.value)}
             className="w-full rounded-sm border bg-[var(--card)] px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             placeholder="you@example.com"
           />
         </label>
-        <p className="mt-3 text-xs text-[var(--muted-foreground)]">
+
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Phone <span className="font-normal opacity-70">(optional)</span>
+          </span>
+          <div
+            className={`flex rounded-sm border bg-[var(--card)] ${
+              phone.replace(/\D/g, "").length > 0 && !phoneOk
+                ? "border-[var(--danger)]"
+                : ""
+            }`}
+          >
+            <span
+              className="flex shrink-0 items-center border-r border-[var(--border)] bg-[var(--muted)] px-3 py-3 font-[family-name:var(--font-mono)] text-sm font-medium text-[var(--foreground)]"
+              aria-hidden="true"
+            >
+              +91
+            </span>
+            <input
+              type="tel"
+              inputMode="numeric"
+              autoComplete="tel-national"
+              value={phone}
+              onChange={(e) =>
+                onPhoneChange(sanitizeIndianPhoneDigits(e.target.value))
+              }
+              maxLength={10}
+              className="min-w-0 flex-1 border-0 bg-transparent px-4 py-3 text-base tracking-widest text-[var(--foreground)] placeholder:font-normal placeholder:tracking-normal placeholder:text-[color-mix(in_srgb,var(--muted-foreground)_32%,var(--background))] outline-none focus:ring-0"
+              placeholder="98765 43210"
+              aria-invalid={
+                phone.replace(/\D/g, "").length > 0 ? !phoneOk : undefined
+              }
+              aria-describedby="phone-hint"
+            />
+          </div>
+          <p id="phone-hint" className="mt-2 text-xs text-[var(--muted-foreground)]">
+            10-digit Indian mobile (starts with 6–9). Leave blank if you
+            prefer not to share.
+          </p>
+          {phone.replace(/\D/g, "").length > 0 && !phoneOk ? (
+            <p className="mt-1 text-xs" style={{ color: "var(--danger)" }}>
+              Enter all 10 digits, starting with 6, 7, 8, or 9 — or leave
+              blank.
+            </p>
+          ) : null}
+        </label>
+
+        <p className="text-xs text-[var(--muted-foreground)]">
           By continuing, you&apos;re okay with us emailing you about what&apos;s
           happening here.
         </p>

@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/prisma";
 import { getCrmClient } from "@/app/lib/crm";
 import { sendVisitNotification } from "@/app/lib/slack";
 import { uploadVisitorPhoto, generatePresignedUrl } from "@/app/lib/s3";
+import { normalizeIndianMobile } from "@/app/lib/phone";
 
 // Structured logging helper
 function logEvent(level: 'info' | 'warn' | 'error', message: string, data?: any) {
@@ -19,6 +20,7 @@ function logEvent(level: 'info' | 'warn' | 'error', message: string, data?: any)
 type VisitRequestBody = {
   fullName: string;
   email: string;
+  phone?: string | null;
   photoDataUrl?: string | null;
   visitReasonId?: string | null;
   customReason?: string | null;
@@ -44,6 +46,19 @@ export async function POST(request: Request) {
     if (!email || !isValidEmail(email)) {
       logEvent('warn', 'Invalid submission: invalid email', { email });
       return NextResponse.json({ error: "Valid email is required" }, { status: 400 });
+    }
+
+    const phoneRaw = typeof body.phone === "string" ? body.phone : "";
+    const phoneNormalized = normalizeIndianMobile(phoneRaw);
+    if (phoneRaw.trim() && !phoneNormalized) {
+      logEvent("warn", "Invalid submission: invalid phone", { phone: phoneRaw });
+      return NextResponse.json(
+        {
+          error:
+            "Enter a valid 10-digit Indian mobile number (or leave phone blank).",
+        },
+        { status: 400 }
+      );
     }
 
     // Photo upload (best-effort)
@@ -113,6 +128,7 @@ export async function POST(request: Request) {
       data: {
         fullName,
         email,
+        phone: phoneNormalized,
         photoUrl: photoKey,
         visitReasonId: finalReasonId,
         customReason: finalCustomReason,
@@ -163,6 +179,7 @@ export async function POST(request: Request) {
     void sendVisitNotification({
       fullName: visit.fullName,
       email: visit.email,
+      phone: visit.phone,
       visitReasonLabel: visit.visitReason?.label ?? visit.customReason ?? null,
       source: visit.source,
       createdAt: visit.createdAt,

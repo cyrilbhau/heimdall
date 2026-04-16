@@ -26,6 +26,7 @@ type VisitSummary = {
   id: string;
   fullName: string;
   email: string;
+  phone: string | null;
   visitReasonLabel: string | null;
   source: string;
   createdAt: string;
@@ -501,6 +502,7 @@ function AdminDashboard() {
                     <th className="px-3 py-2.5 text-left">Photo</th>
                     <th className="px-3 py-2.5 text-left">Name</th>
                     <th className="px-3 py-2.5 text-left">Email</th>
+                    <th className="px-3 py-2.5 text-left">Phone</th>
                     <th className="px-3 py-2.5 text-left">Reason</th>
                     <th className="px-3 py-2.5 text-left">When</th>
                   </tr>
@@ -508,7 +510,7 @@ function AdminDashboard() {
                 <tbody className="divide-y">
                   {loading ? (
                     <tr>
-                      <td colSpan={5} className="p-3">
+                      <td colSpan={6} className="p-3">
                         <div className="space-y-2">
                           {[...Array(5)].map((_, i) => (
                             <div key={i} className="skeleton h-8 w-full" />
@@ -519,7 +521,7 @@ function AdminDashboard() {
                   ) : visits.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={5}
+                        colSpan={6}
                         className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         No visits recorded yet.
@@ -554,6 +556,9 @@ function AdminDashboard() {
                         </td>
                         <td className="px-3 py-2.5 text-xs text-[var(--muted-foreground)]">
                           {visit.email}
+                        </td>
+                        <td className="px-3 py-2.5 text-xs text-[var(--muted-foreground)]">
+                          {visit.phone ?? "\u2014"}
                         </td>
                         <td className="px-3 py-2.5 text-xs text-[var(--muted-foreground)]">
                           {visit.visitReasonLabel ?? "\u2014"}

@@ -6,6 +6,7 @@
 export interface VisitNotificationPayload {
   fullName: string;
   email: string;
+  phone: string | null;
   visitReasonLabel: string | null;
   source: string;
   createdAt: Date;
@@ -45,6 +46,10 @@ function buildBlocks(payload: VisitNotificationPayload): object[] {
       fields: [
         { type: "mrkdwn", text: `*Name*\n${payload.fullName}` },
         { type: "mrkdwn", text: `*Email*\n${payload.email}` },
+        {
+          type: "mrkdwn",
+          text: `*Phone*\n${payload.phone ?? "—"}`,
+        },
         { type: "mrkdwn", text: `*Reason*\n${reason}` },
         { type: "mrkdwn", text: `*Source*\n${payload.source}` },
         { type: "mrkdwn", text: `*Signed in*\n${signInTime}` },

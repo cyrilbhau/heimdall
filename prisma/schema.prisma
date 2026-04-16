@@ -40,6 +40,7 @@ model Visit {
   id            String        @id @default(cuid())
   fullName      String
   email         String
+  phone         String?       // E.164-style, e.g. +14155551234 (optional at kiosk)
   photoUrl      String?       // For production, store in object storage and save key/URL here
   visitReasonId String?
   visitReason   VisitReason?  @relation(fields: [visitReasonId], references: [id])
