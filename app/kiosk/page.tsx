@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
+import { Brand } from "../components/brand";
 
 type Step = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
@@ -34,17 +35,25 @@ const initialFormState: FormState = {
   customReason: "",
 };
 
-/* ── Animation variants (for step transitions after user interaction) ── */
-
+/* ── Animation variants — subtle per guide ── */
 const stepVariants = {
-  enter: { opacity: 0, x: 40 },
+  enter: { opacity: 0, x: 24 },
   center: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -40 },
+  exit: { opacity: 0, x: -24 },
 };
 
 const stepTransition = {
-  duration: 0.3,
+  duration: 0.25,
   ease: [0.25, 0.1, 0.25, 1] as [number, number, number, number],
+};
+
+const STEP_LABELS: Record<number, string> = {
+  1: "Welcome",
+  2: "Name",
+  3: "Email",
+  4: "Photo",
+  5: "Purpose",
+  6: "Details",
 };
 
 /* ── Main page ──────────────────────────────── */
@@ -58,14 +67,11 @@ export default function KioskPage() {
   const [submittedPhotoUrl, setSubmittedPhotoUrl] = useState<string | null>(
     null
   );
-  // Tracks the email of a visitor selected from the autocomplete dropdown.
-  // null = fresh entry (no selection made or email was changed).
   const [selectedVisitorEmail, setSelectedVisitorEmail] = useState<
     string | null
   >(null);
-  const [visitType, setVisitType] = useState<"event" | "visit" | null>(null);
+  const [visitType, setVisitType] = useState<"event" | "visit" | "coworking" | null>(null);
 
-  // Track initial mount so step 1 renders visible without waiting for JS
   const isInitialMount = useRef(true);
   useEffect(() => {
     isInitialMount.current = false;
@@ -82,7 +88,6 @@ export default function KioskPage() {
     }
   }
 
-  // Load reasons on mount
   useEffect(() => {
     loadReasons();
   }, []);
@@ -95,11 +100,9 @@ export default function KioskPage() {
     setSelectedVisitorEmail(null);
     setVisitType(null);
     setStep(1);
-    // Re-fetch reasons so newly promoted custom reasons appear for the next visitor
     loadReasons();
   }
 
-  /** Called when the user selects a past visitor from the name autocomplete. */
   function handleVisitorSelect(visitor: VisitorSuggestion) {
     setForm((prev) => ({
       ...prev,
@@ -118,11 +121,6 @@ export default function KioskPage() {
     }
   }, [step]);
 
-  // Shift the gradient background blobs on every step change
-  useEffect(() => {
-    window.dispatchEvent(new CustomEvent("gradient:shift"));
-  }, [step]);
-
   const firstName = useMemo(() => {
     const parts = form.fullName.trim().split(/\s+/);
     return parts[0] ?? "";
@@ -133,7 +131,6 @@ export default function KioskPage() {
     [reasons]
   );
 
-  // When entering step 6 (event path) with exactly one featured event, auto-select and pre-fill
   useEffect(() => {
     if (step !== 6 || visitType !== "event" || eventReasons.length !== 1) return;
     const single = eventReasons[0];
@@ -150,7 +147,10 @@ export default function KioskPage() {
     setSubmitError(null);
     try {
       const customReason = override?.customReason ?? form.customReason;
-      const visitReasonId = override?.visitReasonId !== undefined ? override.visitReasonId : form.visitReasonId;
+      const visitReasonId =
+        override?.visitReasonId !== undefined
+          ? override.visitReasonId
+          : form.visitReasonId;
 
       const payload: Record<string, unknown> = {
         fullName: form.fullName,
@@ -159,7 +159,6 @@ export default function KioskPage() {
         source: "KIOSK",
       };
 
-      // Send either a predefined reason, a custom reason, or neither (skip)
       if (visitReasonId) {
         payload.visitReasonId = visitReasonId;
       } else if (customReason?.trim()) {
@@ -191,32 +190,53 @@ export default function KioskPage() {
     }
   }
 
-  return (
-    <div className="flex min-h-screen items-center justify-center text-text">
-      <main className="flex h-screen w-full max-w-4xl flex-col justify-between px-6 py-10 sm:px-12">
-        {/* Progress indicator */}
-        {step < 7 && (
-          <nav
-            className="flex justify-center gap-2 py-3"
-            aria-label="Check-in progress"
-          >
-            {[1, 2, 3, 4, 5, 6].map((s) => (
-              <div
-                key={s}
-                className={`h-1 rounded-full transition-all duration-500 ease-out ${
-                  s === step
-                    ? "w-8 bg-primary"
-                    : s < step
-                      ? "w-2 bg-primary/40"
-                      : "w-2 bg-edge"
-                }`}
-              />
-            ))}
-          </nav>
-        )}
+  const stepLabel = STEP_LABELS[step] ?? "";
 
-        {/* Spacer for step 7 to keep layout consistent */}
-        {step === 7 && <div className="py-3" />}
+  return (
+    <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
+      {/* Top bar */}
+      <header className="border-b">
+        <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between px-6 py-4 pr-28 md:px-10 md:pr-32">
+          <Brand sublabel="ConsciousHQ" />
+          <span className="hidden text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted-foreground)] sm:inline">
+            Visitor check-in
+          </span>
+        </div>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-[1100px] flex-1 flex-col px-6 py-8 md:px-10">
+        {/* Progress indicator */}
+        {step < 7 ? (
+          <div className="mb-10">
+            <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+              <span>
+                Step {String(step).padStart(2, "0")} / 06
+              </span>
+              <span>{stepLabel}</span>
+            </div>
+            <nav
+              className="flex gap-1"
+              aria-label="Check-in progress"
+            >
+              {[1, 2, 3, 4, 5, 6].map((s) => (
+                <span
+                  key={s}
+                  className="h-[2px] flex-1 transition-colors duration-300"
+                  style={{
+                    background:
+                      s === step
+                        ? "var(--primary)"
+                        : s < step
+                          ? "var(--foreground)"
+                          : "var(--border)",
+                  }}
+                />
+              ))}
+            </nav>
+          </div>
+        ) : (
+          <div className="mb-10" />
+        )}
 
         <AnimatePresence mode="wait">
           {step === 1 && (
@@ -316,7 +336,15 @@ export default function KioskPage() {
                   setVisitType("visit");
                   setStep(6);
                 }}
+                onCoworking={() => {
+                  setVisitType("coworking");
+                  handleSubmit({
+                    visitReasonId: null,
+                    customReason: "Coworking",
+                  });
+                }}
                 onBack={() => setStep(4)}
+                isSubmitting={isSubmitting}
               />
             </motion.div>
           )}
@@ -377,7 +405,9 @@ export default function KioskPage() {
                   setStep(5);
                 }}
                 onSubmit={(personName) => {
-                  const customReason = personName.trim() ? `Visiting ${personName.trim()}` : "";
+                  const customReason = personName.trim()
+                    ? `Visiting ${personName.trim()}`
+                    : "";
                   handleSubmit({ visitReasonId: null, customReason });
                 }}
                 isSubmitting={isSubmitting}
@@ -388,9 +418,9 @@ export default function KioskPage() {
           {step === 7 && (
             <motion.div
               key="confirmation"
-              initial={{ opacity: 0, scale: 0.92 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 22 }}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
               className="flex flex-1 flex-col"
             >
               <ConfirmationScreen
@@ -401,12 +431,14 @@ export default function KioskPage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <footer className="mt-6 flex items-center justify-between text-xs text-subtle">
-          <div>Visitor check-in</div>
-          <div>Data used for safety and occasional updates.</div>
-        </footer>
       </main>
+
+      <footer className="border-t">
+        <div className="mx-auto flex w-full max-w-[1100px] items-center justify-between px-6 py-5 text-[10px] font-medium uppercase tracking-[0.2em] text-[var(--muted-foreground)] md:px-10">
+          <span>ConsciousHQ · Indiranagar</span>
+          <span>Data used for safety and occasional updates</span>
+        </div>
+      </footer>
     </div>
   );
 }
@@ -416,24 +448,17 @@ export default function KioskPage() {
 function WelcomeScreen({ onNext }: { onNext: () => void }) {
   return (
     <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <h1 className="mb-4 text-5xl font-semibold tracking-tight sm:text-6xl animate-fade-in-up">
-        <span className="gradient-text">Welcome in.</span>
+      <Brand size="lg" className="mb-10 justify-center" />
+      <span className="section-label mb-8">Visitor check-in</span>
+      <h1 className="font-[family-name:var(--font-heading)] text-5xl font-semibold leading-[1.02] tracking-[-0.03em] sm:text-6xl md:text-7xl">
+        Welcome <span style={{ color: "var(--primary)" }}>in</span>.
       </h1>
-      <p className="mb-10 max-w-md text-base text-muted sm:text-lg animate-fade-in-up [animation-delay:100ms]">
-        Please take a moment to check in so we know who&apos;s in the space and
-        can keep you in the loop about what&apos;s happening here.
+      <p className="mt-6 max-w-[520px] text-base leading-relaxed text-[var(--muted-foreground)] md:text-lg">
+        Please take a moment to check in so we know who&apos;s in the space
+        and can keep you in the loop about what&apos;s happening here.
       </p>
-      <div className="animate-fade-in-up [animation-delay:200ms]">
-        <motion.button
-          type="button"
-          onClick={onNext}
-          whileHover={{ scale: 1.04, y: -1 }}
-          whileTap={{ scale: 0.97 }}
-          transition={{ type: "spring", stiffness: 400, damping: 20 }}
-          className="rounded-full bg-primary px-10 py-3.5 text-base font-medium text-white btn-glow focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-        >
-          Start check-in
-        </motion.button>
+      <div className="mt-10">
+        <PrimaryButton onClick={onNext}>Start check-in</PrimaryButton>
       </div>
     </section>
   );
@@ -462,7 +487,6 @@ function NameScreen({
   const blurTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
 
-  // Debounced search against the visitor API
   const searchVisitors = useCallback((query: string) => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
 
@@ -522,7 +546,6 @@ function NameScreen({
   }
 
   function handleBlur() {
-    // Small delay so click on dropdown item can register before hiding
     blurTimeoutRef.current = setTimeout(() => setShowDropdown(false), 200);
   }
 
@@ -533,7 +556,6 @@ function NameScreen({
     }
   }
 
-  // Cleanup timers on unmount
   useEffect(() => {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -542,19 +564,18 @@ function NameScreen({
   }, []);
 
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-10">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          First up, your name.
-        </h2>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          This helps us greet you properly and know who&apos;s in the space.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 02 · Name"
+        title="First up, your name."
+        description="This helps us greet you properly and know who’s in the space."
+      />
 
-      <div className="relative mb-10" ref={wrapperRef}>
-        <label className="block text-sm font-medium text-muted">
-          Full name
+      <div className="relative mb-10 max-w-[560px]" ref={wrapperRef}>
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Full name
+          </span>
           <input
             autoFocus
             type="text"
@@ -564,7 +585,7 @@ function NameScreen({
             onBlur={handleBlur}
             onFocus={handleFocus}
             autoComplete="off"
-            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
+            className="w-full rounded-sm border bg-[var(--card)] px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             placeholder="Alex Smith"
             role="combobox"
             aria-expanded={showDropdown}
@@ -573,7 +594,6 @@ function NameScreen({
           />
         </label>
 
-        {/* Autocomplete dropdown */}
         <AnimatePresence>
           {showDropdown && suggestions.length > 0 && (
             <motion.ul
@@ -583,30 +603,31 @@ function NameScreen({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
               transition={{ duration: 0.15 }}
-              className="absolute left-0 right-0 z-20 mt-1 max-h-60 overflow-y-auto rounded-2xl border border-edge bg-surface p-1 shadow-lg backdrop-blur-md"
+              className="absolute left-0 right-0 z-20 mt-1 max-h-60 divide-y overflow-y-auto border bg-[var(--card)]"
             >
               {suggestions.map((visitor, idx) => (
                 <li key={`${visitor.fullName}-${visitor.email}`}>
                   <button
                     type="button"
                     onMouseDown={(e) => {
-                      // Prevent the input blur from firing before select
                       e.preventDefault();
                       handleSelect(visitor);
                     }}
                     onMouseEnter={() => setHighlightIdx(idx)}
-                    className={`flex w-full flex-col items-start rounded-xl px-4 py-2.5 text-left transition-colors ${
+                    className={`flex w-full flex-col items-start px-4 py-3 text-left transition-colors ${
                       idx === highlightIdx
-                        ? "bg-primary/15 text-text"
-                        : "text-text hover:bg-surface-hover"
+                        ? "bg-[var(--muted)]"
+                        : "hover:bg-[var(--muted)]"
                     }`}
                     role="option"
                     aria-selected={idx === highlightIdx}
                   >
-                    <span className="text-sm font-medium">
+                    <span className="text-sm font-medium text-[var(--foreground)]">
                       {visitor.fullName}
                     </span>
-                    <span className="text-xs text-muted">{visitor.email}</span>
+                    <span className="text-xs text-[var(--muted-foreground)]">
+                      {visitor.email}
+                    </span>
                   </button>
                 </li>
               ))}
@@ -638,20 +659,14 @@ function EmailScreen({
   const trimmed = value.trim();
   const isValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed);
 
-  // Track whether we've already fired the deviation callback
   const deviationFiredRef = useRef(false);
 
-  // Reset the flag when prefillEmail changes (e.g. user went back and picked a
-  // different suggestion)
   useEffect(() => {
     deviationFiredRef.current = false;
   }, [prefillEmail]);
 
   function handleChange(newEmail: string) {
     onChange(newEmail);
-
-    // If the email was pre-filled from an autocomplete selection and the user
-    // changes it, treat this as a fresh entry.
     if (
       prefillEmail !== null &&
       !deviationFiredRef.current &&
@@ -663,30 +678,28 @@ function EmailScreen({
   }
 
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-10">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          And your email.
-        </h2>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          We use this to share event details, updates, and the occasional
-          thoughtful email. No spam, ever.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 03 · Email"
+        title="And your email."
+        description="We use this to share event details, updates, and the occasional thoughtful email. No spam, ever."
+      />
 
-      <div className="mb-10">
-        <label className="block text-sm font-medium text-muted">
-          Email address
+      <div className="mb-10 max-w-[560px]">
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Email address
+          </span>
           <input
             autoFocus
             type="email"
             value={value}
             onChange={(e) => handleChange(e.target.value)}
-            className="mt-3 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle"
+            className="w-full rounded-sm border bg-[var(--card)] px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
             placeholder="you@example.com"
           />
         </label>
-        <p className="mt-2 text-xs text-subtle">
+        <p className="mt-3 text-xs text-[var(--muted-foreground)]">
           By continuing, you&apos;re okay with us emailing you about what&apos;s
           happening here.
         </p>
@@ -737,7 +750,6 @@ function PhotoScreen({
         audio: false,
       });
 
-      // If component unmounted while waiting for permission, stop the stream immediately
       if (cancelledRef.current) {
         stream.getTracks().forEach((t) => t.stop());
         return;
@@ -750,7 +762,6 @@ function PhotoScreen({
         try {
           await videoRef.current.play();
         } catch {
-          // Autoplay was blocked — stream is assigned but video won't play
           setStatus("denied");
           return;
         }
@@ -764,7 +775,6 @@ function PhotoScreen({
     }
   }
 
-  // Auto-request camera when the step mounts
   useEffect(() => {
     cancelledRef.current = false;
     void startCamera();
@@ -806,21 +816,19 @@ function PhotoScreen({
   const showVideo = (status === "ready" || status === "requesting") && !hasPhoto;
 
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-6">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Quick photo, if you&apos;re okay with it.
-        </h2>
-        <p className="mt-3 max-w-md text-sm text-muted">
-          This helps our team recognise you and keep the space safe. You can skip
-          this if the camera isn&apos;t available.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 04 · Photo"
+        title="Quick photo, if you’re okay with it."
+        description="This helps our team recognise you and keep the space safe. You can skip this if the camera isn’t available."
+      />
 
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row">
-        <div className="flex-1">
-          <div className="glass-card relative aspect-[4/3] w-full overflow-hidden rounded-2xl">
-            {/* Video element always in DOM so ref is available for stream */}
+      <div
+        className="mb-8 grid grid-cols-1 gap-px border sm:grid-cols-[2fr_1fr]"
+        style={{ background: "var(--border)" }}
+      >
+        <div className="bg-[var(--card)] p-4">
+          <div className="relative aspect-[4/3] w-full overflow-hidden border bg-[var(--muted)]">
             <video
               ref={videoRef}
               className={`absolute inset-0 h-full w-full object-cover ${showVideo ? "opacity-100" : "opacity-0 pointer-events-none"}`}
@@ -834,16 +842,16 @@ function PhotoScreen({
                 className="relative h-full w-full object-cover"
               />
             ) : status === "requesting" ? (
-              <div className="relative flex h-full items-center justify-center px-6 text-center text-sm text-subtle">
+              <div className="relative flex h-full items-center justify-center px-6 text-center text-xs font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                 Starting camera&hellip;
               </div>
             ) : status === "unavailable" ? (
-              <div className="relative flex h-full items-center justify-center px-6 text-center text-sm text-subtle">
+              <div className="relative flex h-full items-center justify-center px-6 text-center text-sm text-[var(--muted-foreground)]">
                 This device doesn&apos;t support camera access here. You can
                 continue without a photo.
               </div>
             ) : status === "denied" ? (
-              <div className="relative flex h-full items-center justify-center px-6 text-center text-sm text-subtle">
+              <div className="relative flex h-full items-center justify-center px-6 text-center text-sm text-[var(--muted-foreground)]">
                 Camera access was blocked. You can continue without a photo, or
                 enable it in your browser settings.
               </div>
@@ -851,18 +859,19 @@ function PhotoScreen({
           </div>
         </div>
 
-        <div className="glass-card flex w-full flex-1 flex-col justify-between rounded-2xl px-5 py-5 text-sm">
+        <div className="flex flex-col justify-between bg-[var(--card)] p-5 text-sm">
           <div>
-            <p className="mb-2 font-medium text-text">
-              What we do with your photo
+            <span className="section-label mb-3">Your photo</span>
+            <p className="mb-2 font-medium text-[var(--foreground)]">
+              What we do with it
             </p>
-            <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
+            <ul className="list-disc space-y-1 pl-5 text-xs text-[var(--muted-foreground)]">
               <li>Used only for internal check-in and safety.</li>
               <li>Never shared publicly.</li>
             </ul>
           </div>
-          <div className="mt-4 flex flex-col gap-2">
-            <motion.button
+          <div className="mt-6 flex flex-col gap-3">
+            <button
               type="button"
               onClick={
                 hasPhoto
@@ -877,9 +886,7 @@ function PhotoScreen({
                 status === "requesting" ||
                 isCapturing
               }
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.97 }}
-              className="rounded-full bg-primary px-6 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+              className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--primary-foreground)] transition-[filter] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {hasPhoto
                 ? "Discard photo"
@@ -888,24 +895,29 @@ function PhotoScreen({
                   : isCapturing
                     ? "Capturing\u2026"
                     : "Capture photo"}
-            </motion.button>
+            </button>
             {hasPhoto && (
-              <motion.p
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-xs text-success"
+              <p
+                className="text-xs font-medium"
+                style={{ color: "var(--success)" }}
               >
                 Photo captured. You&apos;re set.
-              </motion.p>
+              </p>
             )}
             {status === "denied" && !hasPhoto && (
-              <p className="text-xs text-warning">
+              <p
+                className="text-xs"
+                style={{ color: "var(--warning)" }}
+              >
                 Camera access was blocked. You can still continue without a
                 photo.
               </p>
             )}
             {status === "unavailable" && !hasPhoto && (
-              <p className="text-xs text-warning">
+              <p
+                className="text-xs"
+                style={{ color: "var(--warning)" }}
+              >
                 Camera isn&apos;t available on this device. You can continue
                 without a photo.
               </p>
@@ -919,101 +931,98 @@ function PhotoScreen({
   );
 }
 
-const EVENT_ILLUSTRATION_URL =
-  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=480&q=80";
-const VISIT_ILLUSTRATION_URL =
-  "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=480&q=80";
-
 function ChoiceScreen({
   onAttendingEvent,
   onVisitingSomeone,
+  onCoworking,
   onBack,
+  isSubmitting,
 }: {
   onAttendingEvent: () => void;
   onVisitingSomeone: () => void;
+  onCoworking: () => void;
   onBack: () => void;
+  isSubmitting: boolean;
 }) {
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-8">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          What brings you in today?
-        </h2>
-        <p className="mt-2 max-w-md text-sm text-muted">
-          Choose the option that best fits your visit.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 05 · Purpose"
+        title="What brings you in today?"
+        description="Choose the option that best fits your visit."
+      />
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">
-        <motion.button
-          type="button"
+      <div
+        className="mb-8 grid grid-cols-1 gap-px border sm:grid-cols-3"
+        style={{ background: "var(--border)" }}
+      >
+        <ChoiceTile
+          index="01"
+          title="Attending an event"
+          description="Conference, workshop, or gathering"
           onClick={onAttendingEvent}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          whileHover={{ scale: 1.02, y: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group flex flex-col overflow-hidden rounded-2xl border-2 border-edge bg-base-dark/60 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-        >
-          <div className="relative aspect-[4/3] overflow-hidden bg-surface">
-            <img
-              src={EVENT_ILLUSTRATION_URL}
-              alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-base-dark/80 via-transparent to-transparent opacity-60" />
-          </div>
-          <div className="flex flex-1 flex-col justify-center px-5 py-4">
-            <span className="text-lg font-semibold text-text">
-              Attending an event
-            </span>
-            <span className="mt-1 block text-sm text-muted">
-              Conference, workshop, or gathering
-            </span>
-          </div>
-        </motion.button>
-
-        <motion.button
-          type="button"
+          disabled={isSubmitting}
+        />
+        <ChoiceTile
+          index="02"
+          title="Visiting someone"
+          description="Meeting a person or team"
           onClick={onVisitingSomeone}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.12, duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }}
-          whileHover={{ scale: 1.02, y: -4 }}
-          whileTap={{ scale: 0.98 }}
-          className="group flex flex-col overflow-hidden rounded-2xl border-2 border-edge bg-base-dark/60 text-left transition-colors hover:border-primary/50 hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-        >
-          <div className="relative aspect-[4/3] overflow-hidden bg-surface">
-            <img
-              src={VISIT_ILLUSTRATION_URL}
-              alt=""
-              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-base-dark/80 via-transparent to-transparent opacity-60" />
-          </div>
-          <div className="flex flex-1 flex-col justify-center px-5 py-4">
-            <span className="text-lg font-semibold text-text">
-              Visiting someone
-            </span>
-            <span className="mt-1 block text-sm text-muted">
-              Meeting a person or team
-            </span>
-          </div>
-        </motion.button>
+          disabled={isSubmitting}
+        />
+        <ChoiceTile
+          index="03"
+          title="Coworking"
+          description="Heads-down work from the space"
+          onClick={onCoworking}
+          disabled={isSubmitting}
+        />
       </div>
 
-      <div className="mt-auto flex items-center pt-8">
-        <motion.button
-          type="button"
-          onClick={onBack}
-          whileHover={{ x: -2 }}
-          whileTap={{ scale: 0.97 }}
-          className="text-sm text-muted transition-colors hover:text-text"
-        >
-          &larr; Back
-        </motion.button>
+      <div className="mt-auto flex items-center pt-4">
+        <BackButton onClick={onBack} />
       </div>
     </section>
+  );
+}
+
+function ChoiceTile({
+  index,
+  title,
+  description,
+  onClick,
+  disabled,
+}: {
+  index: string;
+  title: string;
+  description: string;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="group relative flex min-h-[220px] flex-col justify-between bg-[var(--card)] p-8 text-left transition-colors hover:bg-[var(--muted)] focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-[var(--card)] md:p-10"
+    >
+      <span
+        aria-hidden="true"
+        className="absolute left-0 right-0 top-0 h-[2px] origin-left scale-x-0 transition-transform duration-200 group-hover:scale-x-100"
+        style={{ background: "var(--primary)" }}
+      />
+      <span className="font-[family-name:var(--font-mono)] text-xs uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+        {index}
+      </span>
+      <div className="mt-10">
+        <h3 className="font-[family-name:var(--font-heading)] text-2xl font-semibold tracking-[-0.02em] md:text-3xl">
+          {title}
+        </h3>
+        <p className="mt-2 text-sm text-[var(--muted-foreground)]">
+          {description}
+        </p>
+      </div>
+    </button>
   );
 }
 
@@ -1029,50 +1038,37 @@ function VisitingSomeoneScreen({
   const [personName, setPersonName] = useState("");
 
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-8">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Who are you visiting?
-        </h2>
-        <p className="mt-2 max-w-md text-sm text-muted">
-          Enter the name of the person or team you&apos;re here to see.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 06 · Details"
+        title="Who are you visiting?"
+        description="Enter the name of the person or team you’re here to see."
+      />
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-muted">
-          Name
+      <div className="mb-10 max-w-[560px]">
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Name
+          </span>
           <input
             type="text"
             value={personName}
             onChange={(e) => setPersonName(e.target.value)}
             placeholder="e.g. Jane Smith, Product team"
             autoFocus
-            className="mt-2 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3.5 text-base text-text outline-none transition-all duration-200 placeholder:text-subtle focus:border-primary/50"
+            className="w-full rounded-sm border bg-[var(--card)] px-4 py-3 text-base text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
           />
         </label>
       </div>
 
       <div className="mt-auto flex items-center justify-between pt-4">
-        <motion.button
-          type="button"
-          onClick={onBack}
-          whileHover={{ x: -2 }}
-          whileTap={{ scale: 0.97 }}
-          className="text-sm text-muted transition-colors hover:text-text"
-        >
-          &larr; Back
-        </motion.button>
-        <motion.button
-          type="button"
+        <BackButton onClick={onBack} />
+        <PrimaryButton
           onClick={() => onSubmit(personName)}
           disabled={isSubmitting}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.97 }}
-          className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30"
         >
           {isSubmitting ? "Finishing up…" : "Finish check-in"}
-        </motion.button>
+        </PrimaryButton>
       </div>
     </section>
   );
@@ -1082,44 +1078,44 @@ function VisitingSomeoneScreen({
 
 const reasonIcons: Record<string, React.ReactNode> = {
   "meeting-someone": (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <circle cx="9" cy="7" r="3" /><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2" /><circle cx="18" cy="9" r="2.5" /><path d="M21 21v-1.5a3 3 0 0 0-3-3h-.5" />
     </svg>
   ),
   coworking: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <rect x="3" y="4" width="18" height="12" rx="2" /><path d="M7 20h10" /><path d="M12 16v4" />
     </svg>
   ),
   "attending-an-event": (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" /><path d="M10 14h4" />
     </svg>
   ),
   "touring-the-space": (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <circle cx="12" cy="12" r="9" /><path d="M16.24 7.76l-4.95 2.83-2.83 4.95 4.95-2.83z" />
     </svg>
   ),
   delivery: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <rect x="2" y="7" width="15" height="13" rx="1.5" /><path d="M17 11h3l2 3v5h-5" /><circle cx="7.5" cy="20" r="1.5" /><circle cx="18.5" cy="20" r="1.5" />
     </svg>
   ),
   interview: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <rect x="3" y="2" width="18" height="20" rx="2" /><path d="M8 7h8" /><path d="M8 11h5" /><circle cx="12" cy="16.5" r="1" />
     </svg>
   ),
   other: (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
     </svg>
   ),
 };
 
 const fallbackIcon = (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
     <path d="M4 7h16M4 12h16M4 17h10" />
   </svg>
 );
@@ -1164,161 +1160,140 @@ function ReasonScreen({
   const canSubmit = hasSelection && !isSubmitting;
 
   return (
-    <section className="flex flex-1 flex-col justify-center">
-      <header className="mb-6">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Why are you visiting today?
-        </h2>
-        <p className="mt-2 max-w-md text-sm text-muted">
-          Pick a reason, type your own, or skip if you&apos;d rather not say.
-        </p>
-      </header>
+    <section className="flex flex-1 flex-col">
+      <StepHeader
+        label="Step 06 · Details"
+        title="Why are you visiting today?"
+        description="Pick a reason, type your own, or skip if you’d rather not say."
+      />
 
-      {/* A – Featured reasons (prominent cards) */}
+      {/* A – Featured reasons */}
       {featured.length > 0 && (
-        <div className="mb-4">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-            Happening now
-          </p>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {featured.map((reason, index) => {
+        <div className="mb-6">
+          <span className="section-label mb-3">Happening now</span>
+          <div
+            className="grid grid-cols-1 gap-px border sm:grid-cols-3"
+            style={{ background: "var(--border)" }}
+          >
+            {featured.map((reason) => {
               const isSelected = reason.id === selectedId;
               return (
-                <motion.button
+                <button
                   key={reason.id}
                   type="button"
                   onClick={() => onSelect(reason.id)}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.06, duration: 0.25 }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`relative overflow-hidden rounded-2xl border-2 px-4 py-4 text-left transition-all ${
+                  className={`relative flex items-start gap-3 p-5 text-left transition-colors ${
                     isSelected
-                      ? "border-primary bg-primary/15 text-text"
-                      : "border-accent/30 bg-accent/5 text-text hover:border-accent/50 hover:bg-accent/10"
+                      ? "bg-[var(--accent)]"
+                      : "bg-[var(--card)] hover:bg-[var(--muted)]"
                   }`}
                 >
-                  <div className="flex items-center gap-3">
-                    <span className="text-accent">
-                      {getReasonIcon(reason.slug)}
-                    </span>
-                    <span className="text-sm font-semibold leading-snug">
-                      {reason.label}
-                    </span>
-                  </div>
                   {isSelected && (
-                    <motion.div
-                      layoutId="featured-check"
-                      className="absolute right-3 top-3 text-xs font-medium text-primary"
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                    >
-                      &#10003;
-                    </motion.div>
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-0 right-0 top-0 h-[2px]"
+                      style={{ background: "var(--primary)" }}
+                    />
                   )}
-                </motion.button>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* B – Common reasons (icon grid) */}
-      {common.length > 0 && (
-        <div className="mb-4">
-          {featured.length > 0 && (
-            <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted">
-              Or choose a reason
-            </p>
-          )}
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
-            {common.map((reason, index) => {
-              const isSelected = reason.id === selectedId;
-              return (
-                <motion.button
-                  key={reason.id}
-                  type="button"
-                  onClick={() => onSelect(reason.id)}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.03, duration: 0.25 }}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  className={`flex flex-col items-center gap-2 rounded-2xl px-3 py-4 text-center text-xs font-medium transition-all ${
-                    isSelected
-                      ? "bg-primary text-white"
-                      : "glass-card text-text hover:bg-surface-hover"
-                  }`}
-                >
-                  <span className={isSelected ? "text-white" : "text-muted"}>
+                  <span
+                    className={
+                      isSelected ? "text-[var(--primary)]" : "text-[var(--foreground)]"
+                    }
+                  >
                     {getReasonIcon(reason.slug)}
                   </span>
-                  <span className="leading-tight">{reason.label}</span>
-                </motion.button>
+                  <span className="text-sm font-semibold leading-snug text-[var(--foreground)]">
+                    {reason.label}
+                  </span>
+                </button>
               );
             })}
           </div>
         </div>
       )}
 
-      {/* C – Custom reason input */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-muted">
-          Or type your own reason
+      {/* B – Common reasons */}
+      {common.length > 0 && (
+        <div className="mb-6">
+          {featured.length > 0 && (
+            <span className="section-label mb-3">Or choose a reason</span>
+          )}
+          <div
+            className="grid grid-cols-2 gap-px border sm:grid-cols-3 lg:grid-cols-4"
+            style={{ background: "var(--border)" }}
+          >
+            {common.map((reason) => {
+              const isSelected = reason.id === selectedId;
+              return (
+                <button
+                  key={reason.id}
+                  type="button"
+                  onClick={() => onSelect(reason.id)}
+                  className={`flex flex-col items-start gap-3 p-4 text-left transition-colors ${
+                    isSelected
+                      ? "bg-[var(--accent)]"
+                      : "bg-[var(--card)] hover:bg-[var(--muted)]"
+                  }`}
+                >
+                  <span
+                    className={
+                      isSelected
+                        ? "text-[var(--primary)]"
+                        : "text-[var(--muted-foreground)]"
+                    }
+                  >
+                    {getReasonIcon(reason.slug)}
+                  </span>
+                  <span className="text-xs font-semibold leading-tight text-[var(--foreground)]">
+                    {reason.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* C – Custom reason */}
+      <div className="mb-4 max-w-[560px]">
+        <label className="block">
+          <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+            Or type your own reason
+          </span>
           <input
             type="text"
             value={customReason}
             onChange={(e) => onCustomReasonChange(e.target.value)}
             placeholder="e.g. Picking up equipment, attending a workshop..."
-            className="mt-2 w-full rounded-2xl border border-edge bg-base-dark/60 px-4 py-3 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
+            className="w-full rounded-sm border bg-[var(--card)] px-4 py-3 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
           />
         </label>
       </div>
 
       {submitError && (
-        <motion.p
-          initial={{ opacity: 0, y: -5 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3 text-sm text-error"
+        <p
+          className="mb-3 text-sm"
+          style={{ color: "var(--danger)" }}
         >
           {submitError}
-        </motion.p>
+        </p>
       )}
 
       {/* D – Navigation */}
-      <div className="mt-auto flex items-center justify-between pt-4">
-        <motion.button
-          type="button"
-          onClick={onBack}
-          whileHover={{ x: -2 }}
-          whileTap={{ scale: 0.97 }}
-          className="text-sm text-muted transition-colors hover:text-text"
-        >
-          &larr; Back
-        </motion.button>
-
-        <div className="flex items-center gap-4">
-          <motion.button
+      <div className="mt-auto flex items-center justify-between pt-6">
+        <BackButton onClick={onBack} />
+        <div className="flex items-center gap-5">
+          <button
             type="button"
             onClick={onSkip}
             disabled={isSubmitting}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.97 }}
-            className="text-sm text-subtle transition-colors hover:text-muted disabled:opacity-30"
+            className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)] disabled:opacity-40"
           >
             Skip
-          </motion.button>
-          <motion.button
-            type="button"
-            disabled={!canSubmit}
-            onClick={onSubmit}
-            whileHover={canSubmit ? { scale: 1.02 } : {}}
-            whileTap={canSubmit ? { scale: 0.97 } : {}}
-            className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
-          >
+          </button>
+          <PrimaryButton onClick={onSubmit} disabled={!canSubmit}>
             {isSubmitting ? "Finishing up\u2026" : "Finish check-in"}
-          </motion.button>
+          </PrimaryButton>
         </div>
       </div>
     </section>
@@ -1335,49 +1310,83 @@ function ConfirmationScreen({
   onRestart: () => void;
 }) {
   return (
-    <section className="flex flex-1 flex-col items-center justify-center text-center">
-      <h2 className="mb-4 text-4xl font-semibold tracking-tight sm:text-5xl animate-fade-in-up">
-        <span className="gradient-text">
-          You&apos;re all set{firstName ? `, ${firstName}` : ""}.
-        </span>
-      </h2>
+    <section className="flex flex-1 items-center justify-center">
+      <div className="grid-texture w-full p-6 md:p-10">
+        <div className="section-frame mx-auto max-w-[720px]">
+          <div className="flex flex-col items-center text-center">
+            <span className="section-label mb-6">Checked in</span>
 
-      {photoUrl && (
-        <div className="mb-6 animate-scale-in [animation-delay:100ms]">
-          <div className="relative mx-auto h-32 w-32">
-            <div
-              className="absolute -inset-1 rounded-full bg-gradient-to-br from-primary to-accent opacity-50 blur-md"
-              style={{ animation: "glow-ring 3s ease-in-out infinite" }}
-            />
-            <img
-              src={photoUrl}
-              alt="Visitor check-in photo"
-              className="relative h-32 w-32 rounded-full object-cover border-2 border-edge"
-            />
+            <h2 className="font-[family-name:var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+              You&apos;re all set
+              {firstName ? (
+                <>
+                  ,{" "}
+                  <span style={{ color: "var(--primary)" }}>
+                    {firstName}
+                  </span>
+                </>
+              ) : (
+                ""
+              )}
+              .
+            </h2>
+
+            {photoUrl && (
+              <div className="mt-8 border p-1">
+                <img
+                  src={photoUrl}
+                  alt="Visitor check-in photo"
+                  className="h-32 w-32 object-cover"
+                />
+              </div>
+            )}
+
+            <p className="mt-6 max-w-[420px] text-sm leading-relaxed text-[var(--muted-foreground)]">
+              Thanks for checking in. Make yourself at home. This screen will
+              reset for the next visitor in a few seconds.
+            </p>
+
+            <div className="mt-8">
+              <button
+                type="button"
+                onClick={onRestart}
+                className="inline-flex items-center justify-center rounded-sm border bg-[var(--card)] px-6 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--foreground)] transition-colors hover:bg-[var(--muted)]"
+              >
+                Back to start now
+              </button>
+            </div>
           </div>
         </div>
-      )}
-
-      <p className="mb-8 max-w-md text-sm text-muted animate-fade-in-up [animation-delay:200ms]">
-        Thanks for checking in. Make yourself at home. This screen will reset for
-        the next visitor in a few seconds.
-      </p>
-      <div className="animate-fade-in-up [animation-delay:300ms]">
-        <motion.button
-          type="button"
-          onClick={onRestart}
-          whileHover={{ scale: 1.03 }}
-          whileTap={{ scale: 0.97 }}
-          className="rounded-full border border-edge px-8 py-2.5 text-sm font-medium text-text transition-colors hover:border-edge-hover hover:bg-surface"
-        >
-          Back to start now
-        </motion.button>
       </div>
     </section>
   );
 }
 
-/* ── Shared step navigation ─────────────────── */
+/* ── Shared primitives ────────────────────── */
+
+function StepHeader({
+  label,
+  title,
+  description,
+}: {
+  label: string;
+  title: string;
+  description?: string;
+}) {
+  return (
+    <header className="mb-10 max-w-[760px]">
+      <span className="section-label mb-4">{label}</span>
+      <h2 className="font-[family-name:var(--font-heading)] text-4xl font-semibold leading-[1.05] tracking-[-0.03em] sm:text-5xl">
+        {title}
+      </h2>
+      {description && (
+        <p className="mt-4 max-w-[560px] text-base text-[var(--muted-foreground)]">
+          {description}
+        </p>
+      )}
+    </header>
+  );
+}
 
 function StepNav({
   onBack,
@@ -1391,26 +1400,44 @@ function StepNav({
   nextLabel?: string;
 }) {
   return (
-    <div className="mt-auto flex items-center justify-between pt-4">
-      <motion.button
-        type="button"
-        onClick={onBack}
-        whileHover={{ x: -2 }}
-        whileTap={{ scale: 0.97 }}
-        className="text-sm text-muted transition-colors hover:text-text"
-      >
-        &larr; Back
-      </motion.button>
-      <motion.button
-        type="button"
-        disabled={!canContinue}
-        onClick={onNext}
-        whileHover={canContinue ? { scale: 1.02 } : {}}
-        whileTap={canContinue ? { scale: 0.97 } : {}}
-        className="rounded-full bg-primary px-8 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
-      >
+    <div className="mt-auto flex items-center justify-between pt-6">
+      <BackButton onClick={onBack} />
+      <PrimaryButton onClick={onNext} disabled={!canContinue}>
         {nextLabel}
-      </motion.button>
+      </PrimaryButton>
     </div>
+  );
+}
+
+function PrimaryButton({
+  onClick,
+  disabled,
+  children,
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-8 py-3 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--primary-foreground)] transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+    >
+      {children}
+    </button>
+  );
+}
+
+function BackButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)] transition-colors hover:text-[var(--foreground)]"
+    >
+      ← Back
+    </button>
   );
 }

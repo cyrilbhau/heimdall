@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Brand } from "../components/brand";
 
 type VisitReason = {
   id: string;
@@ -65,51 +65,55 @@ export default function AdminPage() {
 
   if (!isAuthed) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-text">
-        <main className="glass-card w-full max-w-sm rounded-2xl px-6 py-8 animate-fade-in-up">
-          <h1 className="mb-2 text-xl font-semibold tracking-tight">
-            Admin dashboard
-          </h1>
-          <p className="mb-6 text-xs text-muted">
-            Enter the shared admin password to manage visit reasons and view
-            recent visits.
-          </p>
-          <form onSubmit={handleLogin} className="space-y-4">
-            <label className="block text-xs font-medium text-muted">
-              Password
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="mt-2 w-full rounded-xl border border-edge bg-base-dark/60 px-3 py-2.5 text-sm text-text outline-none transition-all duration-200 placeholder:text-subtle"
-              />
-            </label>
-            <AnimatePresence>
+      <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
+        <header className="border-b">
+          <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 py-4 pr-28 md:px-10 md:pr-32">
+            <Brand sublabel="ConsciousHQ" />
+            <span className="hidden text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)] sm:inline">
+              Admin
+            </span>
+          </div>
+        </header>
+
+        <main className="flex flex-1 items-center justify-center px-6 py-16">
+          <div className="card w-full max-w-sm">
+            <span className="section-label mb-4">Admin dashboard</span>
+            <h1 className="font-[family-name:var(--font-heading)] text-2xl font-semibold tracking-[-0.02em]">
+              Sign in
+            </h1>
+            <p className="mt-2 text-xs text-[var(--muted-foreground)]">
+              Enter the shared admin password to manage visit reasons and view
+              recent visits.
+            </p>
+            <form onSubmit={handleLogin} className="mt-6 space-y-4">
+              <label className="block">
+                <span className="mb-2 block text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
+                  Password
+                </span>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-sm border bg-[var(--card)] px-3 py-2.5 text-sm text-[var(--foreground)]"
+                />
+              </label>
               {loginError && (
-                <motion.p
-                  initial={{ opacity: 0, y: -5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  className="text-xs text-error"
+                <p
+                  className="text-xs"
+                  style={{ color: "var(--danger)" }}
                 >
                   {loginError}
-                </motion.p>
+                </p>
               )}
-            </AnimatePresence>
-            <motion.button
-              type="submit"
-              disabled={!password || isLoggingIn}
-              whileHover={
-                password && !isLoggingIn ? { scale: 1.01 } : {}
-              }
-              whileTap={
-                password && !isLoggingIn ? { scale: 0.98 } : {}
-              }
-              className="w-full rounded-full bg-primary px-4 py-2.5 text-sm font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
-            >
-              {isLoggingIn ? "Signing in\u2026" : "Sign in"}
-            </motion.button>
-          </form>
+              <button
+                type="submit"
+                disabled={!password || isLoggingIn}
+                className="inline-flex w-full items-center justify-center rounded-full bg-[var(--primary)] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.12em] text-[var(--primary-foreground)] transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {isLoggingIn ? "Signing in\u2026" : "Sign in"}
+              </button>
+            </form>
+          </div>
         </main>
       </div>
     );
@@ -253,52 +257,71 @@ function AdminDashboard() {
   }
 
   return (
-    <div className="flex min-h-screen items-start justify-center text-text">
-      <main className="flex w-full max-w-5xl flex-col gap-8 px-6 py-10 sm:px-10">
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between animate-fade-in-up">
+    <div className="flex min-h-screen flex-col bg-[var(--background)] text-[var(--foreground)]">
+      {/* Topbar */}
+      <header className="sticky top-0 z-20 border-b bg-[var(--card)]">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 py-4 pr-28 md:px-10 md:pr-32">
+          <Brand sublabel="Visitor dashboard" />
+          <div className="hidden items-center gap-4 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)] sm:flex">
+            <span>{reasons.length} reasons</span>
+            <span>{visits.length} visits</span>
+          </div>
+        </div>
+      </header>
+
+      <main className="mx-auto w-full max-w-[1400px] flex-1 px-6 py-10 md:px-10">
+        <div className="mb-10 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h1 className="text-2xl font-semibold tracking-tight">
-              <span className="gradient-text">Visitor dashboard</span>
+            <span className="section-label mb-3">Admin</span>
+            <h1 className="font-[family-name:var(--font-heading)] text-3xl font-semibold tracking-[-0.02em] md:text-4xl">
+              Visitor dashboard
             </h1>
-            <p className="mt-1 text-xs text-muted">
+            <p className="mt-2 max-w-[560px] text-sm text-[var(--muted-foreground)]">
               Manage reasons for visiting and keep an eye on who&apos;s been
               through the door.
             </p>
           </div>
-        </header>
+        </div>
 
-        <AnimatePresence>
-          {error && (
-            <motion.div
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="rounded-2xl border border-error/30 bg-error/10 px-4 py-3 text-xs text-error"
-            >
-              {error}
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {error && (
+          <div
+            className="mb-8 rounded-sm border px-4 py-3 text-sm"
+            style={{
+              borderColor: "var(--danger)",
+              color: "var(--danger)",
+              background:
+                "color-mix(in srgb, var(--danger) 10%, var(--card))",
+            }}
+          >
+            {error}
+          </div>
+        )}
 
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid gap-px border lg:grid-cols-2" style={{ background: "var(--border)" }}>
           {/* Visit reasons */}
-          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:100ms]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text">
-                Visit reasons
-              </h2>
-              <span className="text-xs text-subtle">
+          <section className="bg-[var(--card)] p-6 md:p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <span className="section-label mb-2">Visit reasons</span>
+                <h2 className="font-[family-name:var(--font-heading)] text-xl font-semibold tracking-[-0.01em]">
+                  Configure
+                </h2>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                 {reasons.length} configured
               </span>
             </div>
 
-            <form onSubmit={handleCreateReason} className="mb-4 flex flex-wrap items-center gap-2">
+            <form
+              onSubmit={handleCreateReason}
+              className="mb-6 flex flex-wrap items-center gap-2"
+            >
               <input
                 type="text"
                 value={newLabel}
                 onChange={(e) => setNewLabel(e.target.value)}
                 placeholder="Add a new reason…"
-                className="min-w-0 flex-1 rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200 placeholder:text-subtle"
+                className="min-w-0 flex-1 rounded-sm border bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)] placeholder:text-[var(--muted-foreground)]"
               />
               <select
                 value={newCategory}
@@ -307,7 +330,7 @@ function AdminDashboard() {
                     e.target.value as "" | "EVENT" | "VISIT" | "OTHER"
                   )
                 }
-                className="rounded-xl border border-edge bg-base-dark/60 px-3 py-2 text-xs text-text outline-none transition-all duration-200"
+                className="rounded-sm border bg-[var(--card)] px-3 py-2 text-sm text-[var(--foreground)]"
                 title="Category (Event / Visit / Other)"
               >
                 {CATEGORY_OPTIONS.map((opt) => (
@@ -316,30 +339,24 @@ function AdminDashboard() {
                   </option>
                 ))}
               </select>
-              <motion.button
+              <button
                 type="submit"
                 disabled={!newLabel.trim() || isSavingReason}
-                whileHover={
-                  newLabel.trim() && !isSavingReason ? { scale: 1.03 } : {}
-                }
-                whileTap={
-                  newLabel.trim() && !isSavingReason ? { scale: 0.97 } : {}
-                }
-                className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-white btn-glow transition-all disabled:cursor-not-allowed disabled:opacity-30 disabled:shadow-none"
+                className="inline-flex items-center justify-center rounded-full bg-[var(--primary)] px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[var(--primary-foreground)] transition-[filter,opacity] hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {isSavingReason ? "Saving\u2026" : "Add"}
-              </motion.button>
+              </button>
             </form>
 
-            <div className="glass-card max-h-72 space-y-1 overflow-y-auto rounded-xl p-1 text-xs">
+            <div className="max-h-[420px] divide-y overflow-y-auto border">
               {loading ? (
-                <div className="space-y-2 p-2">
+                <div className="space-y-2 p-3">
                   {[...Array(4)].map((_, i) => (
                     <div key={i} className="skeleton h-10 w-full" />
                   ))}
                 </div>
               ) : reasons.length === 0 ? (
-                <div className="px-3 py-6 text-center text-subtle">
+                <div className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]">
                   No reasons yet. Add a few to get started.
                 </div>
               ) : (
@@ -350,7 +367,7 @@ function AdminDashboard() {
                       a.sortOrder - b.sortOrder ||
                       a.label.localeCompare(b.label)
                   )
-                  .map((reason, index) => {
+                  .map((reason) => {
                     const isCurrentlyFeatured = isFeaturedActive(reason);
                     const featuredCount = reasons.filter(isFeaturedActive).length;
                     const canFeature =
@@ -358,28 +375,30 @@ function AdminDashboard() {
                       (isCurrentlyFeatured || featuredCount < 3);
 
                     return (
-                      <motion.div
+                      <div
                         key={reason.id}
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.04, duration: 0.25 }}
-                        className="flex items-center justify-between rounded-lg px-3 py-2 transition-colors hover:bg-surface-hover"
+                        className="flex items-center justify-between gap-3 px-3 py-3 transition-colors hover:bg-[var(--muted)]"
                       >
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-text">
+                          <div className="text-sm font-semibold text-[var(--foreground)]">
                             {reason.label}
                           </div>
-                          <div className="text-[10px] text-subtle">
-                            {reason.slug} &middot;{" "}
-                            {reason.source.toLowerCase()}
+                          <div className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
+                            {reason.slug} · {reason.source.toLowerCase()}
                             {reason.category && (
-                              <span className="ml-1 text-accent">
-                                &middot; {reason.category.toLowerCase()}
+                              <span
+                                className="ml-1"
+                                style={{ color: "var(--primary)" }}
+                              >
+                                · {reason.category.toLowerCase()}
                               </span>
                             )}
                             {isCurrentlyFeatured && (
-                              <span className="ml-1 text-accent">
-                                &middot; {featuredTimeLeft(reason)}
+                              <span
+                                className="ml-1"
+                                style={{ color: "var(--primary)" }}
+                              >
+                                · {featuredTimeLeft(reason)}
                               </span>
                             )}
                           </div>
@@ -394,7 +413,7 @@ function AdminDashboard() {
                                 v === "" ? null : (v as "EVENT" | "VISIT" | "OTHER")
                               );
                             }}
-                            className="rounded-lg border border-edge bg-base-dark/60 px-2 py-1 text-[10px] text-text outline-none transition-colors"
+                            className="rounded-sm border bg-[var(--card)] px-2 py-1 text-[10px] text-[var(--foreground)]"
                             title="Category"
                           >
                             {CATEGORY_OPTIONS.map((opt) => (
@@ -404,12 +423,10 @@ function AdminDashboard() {
                             ))}
                           </select>
                           {reason.active && (
-                            <motion.button
+                            <button
                               type="button"
                               onClick={() => toggleReasonFeatured(reason)}
                               disabled={!canFeature && !isCurrentlyFeatured}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
                               title={
                                 !canFeature && !isCurrentlyFeatured
                                   ? "Max 3 featured reasons"
@@ -417,32 +434,46 @@ function AdminDashboard() {
                                     ? "Remove from featured"
                                     : "Feature this reason"
                               }
-                              className={`rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors ${
+                              className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] transition-colors ${
                                 isCurrentlyFeatured
-                                  ? "bg-accent/15 text-accent"
+                                  ? ""
                                   : canFeature
-                                    ? "bg-surface-hover text-muted hover:bg-accent/10 hover:text-accent"
-                                    : "bg-surface-hover text-subtle opacity-40 cursor-not-allowed"
+                                    ? "text-[var(--muted-foreground)] hover:text-[var(--primary)]"
+                                    : "cursor-not-allowed opacity-40"
                               }`}
+                              style={
+                                isCurrentlyFeatured
+                                  ? {
+                                      background: "var(--accent)",
+                                      color: "var(--primary)",
+                                    }
+                                  : { background: "var(--muted)" }
+                              }
                             >
                               {isCurrentlyFeatured ? "Featured" : "Feature"}
-                            </motion.button>
+                            </button>
                           )}
-                          <motion.button
+                          <button
                             type="button"
                             onClick={() => toggleReasonActive(reason)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            className={`rounded-full px-3 py-1 text-[10px] font-medium transition-colors ${
+                            className="rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]"
+                            style={
                               reason.active
-                                ? "bg-success/15 text-success"
-                                : "bg-surface-hover text-muted"
-                            }`}
+                                ? {
+                                    background:
+                                      "color-mix(in srgb, var(--success) 18%, var(--card))",
+                                    color: "var(--success)",
+                                  }
+                                : {
+                                    background: "var(--muted)",
+                                    color: "var(--muted-foreground)",
+                                  }
+                            }
                           >
                             {reason.active ? "Active" : "Hidden"}
-                          </motion.button>
+                          </button>
                         </div>
-                      </motion.div>
+                      </div>
                     );
                   })
               )}
@@ -450,18 +481,22 @@ function AdminDashboard() {
           </section>
 
           {/* Recent visits */}
-          <section className="glass-card rounded-2xl px-5 py-5 sm:px-6 animate-fade-in-up [animation-delay:200ms]">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-sm font-semibold text-text">
-                Recent visits
-              </h2>
-              <span className="text-xs text-subtle">
+          <section className="bg-[var(--card)] p-6 md:p-8">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <span className="section-label mb-2">Recent visits</span>
+                <h2 className="font-[family-name:var(--font-heading)] text-xl font-semibold tracking-[-0.01em]">
+                  Who&apos;s been by
+                </h2>
+              </div>
+              <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                 Last {visits.length || 0}
               </span>
             </div>
-            <div className="glass-card max-h-72 overflow-y-auto rounded-xl text-xs">
-              <table className="min-w-full border-collapse">
-                <thead className="sticky top-0 bg-base/90 backdrop-blur-sm text-[10px] uppercase tracking-wide text-subtle">
+
+            <div className="max-h-[420px] overflow-y-auto border">
+              <table className="min-w-full border-collapse text-sm">
+                <thead className="sticky top-0 z-10 bg-[var(--muted)] text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)]">
                   <tr>
                     <th className="px-3 py-2.5 text-left">Photo</th>
                     <th className="px-3 py-2.5 text-left">Name</th>
@@ -470,7 +505,7 @@ function AdminDashboard() {
                     <th className="px-3 py-2.5 text-left">When</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y">
                   {loading ? (
                     <tr>
                       <td colSpan={5} className="p-3">
@@ -485,51 +520,48 @@ function AdminDashboard() {
                     <tr>
                       <td
                         colSpan={5}
-                        className="px-3 py-6 text-center text-subtle"
+                        className="px-3 py-8 text-center text-sm text-[var(--muted-foreground)]"
                       >
                         No visits recorded yet.
                       </td>
                     </tr>
                   ) : (
-                    visits.map((visit, index) => (
-                      <motion.tr
+                    visits.map((visit) => (
+                      <tr
                         key={visit.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: index * 0.03, duration: 0.3 }}
-                        className="border-t border-edge transition-colors hover:bg-surface-hover"
+                        className="transition-colors hover:bg-[var(--muted)]"
                       >
                         <td className="px-3 py-2.5">
                           {visit.photoUrl ? (
                             <img
                               src={visit.photoUrl}
                               alt={`${visit.fullName}'s photo`}
-                              className="h-8 w-8 rounded-full object-cover border border-edge"
+                              className="h-8 w-8 rounded-sm border object-cover"
                               onError={(e) => {
                                 e.currentTarget.style.display = "none";
                               }}
                             />
                           ) : (
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-edge bg-surface">
-                              <span className="text-[8px] text-subtle">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-sm border bg-[var(--muted)]">
+                              <span className="text-[8px] text-[var(--muted-foreground)]">
                                 &mdash;
                               </span>
                             </div>
                           )}
                         </td>
-                        <td className="px-3 py-2.5 text-text">
+                        <td className="px-3 py-2.5 text-sm font-medium text-[var(--foreground)]">
                           {visit.fullName}
                         </td>
-                        <td className="px-3 py-2.5 text-muted">
+                        <td className="px-3 py-2.5 text-xs text-[var(--muted-foreground)]">
                           {visit.email}
                         </td>
-                        <td className="px-3 py-2.5 text-muted">
+                        <td className="px-3 py-2.5 text-xs text-[var(--muted-foreground)]">
                           {visit.visitReasonLabel ?? "\u2014"}
                         </td>
-                        <td className="px-3 py-2.5 text-subtle">
+                        <td className="px-3 py-2.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted-foreground)]">
                           {formatRelative(visit.createdAt)}
                         </td>
-                      </motion.tr>
+                      </tr>
                     ))
                   )}
                 </tbody>
@@ -538,6 +570,13 @@ function AdminDashboard() {
           </section>
         </div>
       </main>
+
+      <footer className="border-t">
+        <div className="mx-auto flex w-full max-w-[1400px] items-center justify-between px-6 py-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-[var(--muted-foreground)] md:px-10">
+          <span>ConsciousHQ · Indiranagar</span>
+          <span>Admin</span>
+        </div>
+      </footer>
     </div>
   );
 }
