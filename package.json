@@ -12,6 +12,7 @@
     "lint": "eslint",
     "prisma:generate": "prisma generate",
     "prisma:migrate-deploy": "prisma migrate deploy",
+    "start:with-migrate": "prisma migrate deploy && next start -p $PORT",
     "db:seed": "tsx scripts/seed.ts"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ nixPkgs = ["nodejs_22"]
 
 [phases.build]
 cmds = [
+  "npm install",
   "npm ci",
   "npx prisma generate",
   "npx prisma migrate deploy",

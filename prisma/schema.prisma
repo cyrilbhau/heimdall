@@ -13,14 +13,21 @@ datasource db {
   provider = "postgresql"
 }
 
+enum ReasonCategory {
+  EVENT
+  VISIT
+  OTHER
+}
+
 model VisitReason {
-  id         String       @id @default(cuid())
-  label      String       @unique
-  slug       String       @unique
-  active     Boolean      @default(true)
-  sortOrder  Int          @default(0)
-  source     ReasonSource @default(MANUAL)
-  featured   Boolean      @default(false)
+  id         String          @id @default(cuid())
+  label      String          @unique
+  slug       String          @unique
+  active     Boolean         @default(true)
+  sortOrder  Int             @default(0)
+  source     ReasonSource    @default(MANUAL)
+  category   ReasonCategory?
+  featured   Boolean         @default(false)
   featuredAt DateTime?
 
   visits    Visit[]

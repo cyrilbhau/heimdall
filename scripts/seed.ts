@@ -8,14 +8,18 @@ const prisma = new PrismaClient({
   adapter: new PrismaPg(new Pool({ connectionString: process.env.DATABASE_URL })),
 });
 
-const defaultVisitReasons = [
-  { label: 'Meeting someone', sortOrder: 1 },
-  { label: 'Coworking', sortOrder: 2 },
-  { label: 'Attending an event', sortOrder: 3 },
-  { label: 'Touring the space', sortOrder: 4 },
-  { label: 'Delivery', sortOrder: 5 },
-  { label: 'Interview', sortOrder: 6 },
-  { label: 'Other', sortOrder: 7 },
+const defaultVisitReasons: Array<{
+  label: string;
+  sortOrder: number;
+  category: 'EVENT' | 'VISIT' | 'OTHER' | null;
+}> = [
+  { label: 'Meeting someone', sortOrder: 1, category: null },
+  { label: 'Coworking', sortOrder: 2, category: null },
+  { label: 'Attending an event', sortOrder: 3, category: 'EVENT' },
+  { label: 'Touring the space', sortOrder: 4, category: null },
+  { label: 'Delivery', sortOrder: 5, category: null },
+  { label: 'Interview', sortOrder: 6, category: null },
+  { label: 'Other', sortOrder: 7, category: 'OTHER' },
 ];
 
 async function seed() {
@@ -33,6 +37,7 @@ async function seed() {
           active: true,
           sortOrder: reason.sortOrder,
           source: 'MANUAL',
+          category: reason.category,
         },
         create: {
           label: reason.label,
@@ -40,6 +45,7 @@ async function seed() {
           active: true,
           sortOrder: reason.sortOrder,
           source: 'MANUAL',
+          category: reason.category,
         },
       });
       

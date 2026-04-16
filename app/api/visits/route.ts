@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/app/lib/prisma";
 import { getCrmClient } from "@/app/lib/crm";
+import { sendVisitNotification } from "@/app/lib/slack";
 import { uploadVisitorPhoto, generatePresignedUrl } from "@/app/lib/s3";
 
 // Structured logging helper
@@ -132,6 +133,18 @@ export async function POST(request: Request) {
       hasCustomReason: !!finalCustomReason,
     });
 
+    // Visitor history for Slack: new vs repeat and last visit.
+    const visitCount = await prisma.visit.count({ where: { email: visit.email } });
+    const isNewVisitor = visitCount === 1;
+    let lastVisitAt: Date | null = null;
+    if (!isNewVisitor) {
+      const previousVisit = await prisma.visit.findFirst({
+        where: { email: visit.email, id: { not: visit.id } },
+        orderBy: { createdAt: "desc" },
+      });
+      lastVisitAt = previousVisit?.createdAt ?? null;
+    }
+
     // Fire-and-forget CRM sync; failure here should not block the visitor.
     const crmClient = getCrmClient();
     void crmClient
@@ -146,6 +159,17 @@ export async function POST(request: Request) {
       .catch((error) => {
         console.error("CRM sync failed", error);
       });
+
+    void sendVisitNotification({
+      fullName: visit.fullName,
+      email: visit.email,
+      visitReasonLabel: visit.visitReason?.label ?? visit.customReason ?? null,
+      source: visit.source,
+      createdAt: visit.createdAt,
+      photoUrl,
+      isNewVisitor,
+      lastVisitAt,
+    }).catch((err) => console.error("Slack notification failed", err));
 
     return NextResponse.json({ 
       id: visit.id, 
